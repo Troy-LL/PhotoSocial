@@ -1,5 +1,6 @@
 import PartySocket from "partysocket";
 import type { WsEnvelope } from "@photosocial/shared";
+import { partykitHost } from "./deploy-config.js";
 
 type EventHandler = (envelope: WsEnvelope) => void;
 
@@ -8,14 +9,6 @@ let activeKey: string | null = null;
 let reconnecting = false;
 const handlers = new Set<EventHandler>();
 const reconnectListeners = new Set<(v: boolean) => void>();
-
-function partyHost(): string {
-  const env = import.meta.env.VITE_PARTYKIT_HOST as string | undefined;
-  if (env) {
-    return env.replace(/^https?:\/\//, "").replace(/\/$/, "");
-  }
-  return `${window.location.hostname}:1999`;
-}
 
 export function connectWs(sessionId: string, token: string): PartySocket {
   const key = `${sessionId}:${token}`;
@@ -30,7 +23,7 @@ export function connectWs(sessionId: string, token: string): PartySocket {
 
   activeKey = key;
   socket = new PartySocket({
-    host: partyHost(),
+    host: partykitHost(),
     room: sessionId,
     party: "main",
     query: { token },

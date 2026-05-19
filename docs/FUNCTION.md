@@ -24,10 +24,6 @@
 │  │  Session    │  │  Party       │  │  Image Upload  │ │
 │  │  Manager   │  │  broadcast   │  │  Service       │ │
 │  └─────────────┘  └──────────────┘  └────────────────┘ │
-│              ┌──────────────┐                           │
-│              │  Email       │                           │
-│              │  Service     │                           │
-│              └──────────────┘                           │
 └──────────────────────┬──────────────────────────────────┘
                        │
         ┌──────────────┴──────────────┐
@@ -129,7 +125,7 @@ Host finalizes the collage. No further photo submissions accepted.
 
 **Behavior:**
 - Updates session status to `"locked"`
-- Renders `final-collage.jpg` on the API server (short-lived, default 1h TTL for email)
+- Renders `final-collage.jpg` on the API server (short-lived, default 1h TTL for download)
 - Deletes individual slot photo files and clears participant `photoUrl` / `thumbnailUrl`
 - Sets `finalCollageExpiresAt`; scheduler removes the final file after TTL
 - Broadcasts `SESSION_LOCKED` via PartyKit to all participants
@@ -465,48 +461,13 @@ Returns a full set of CSS custom property values for a given theme.
 
 ---
 
-## 8. Download & Email Functions
+## 8. Download Functions
 
-### `downloadImage(source, filename)`
-Triggers a local file download.
-
-**Input:**
-```ts
-{
-  source: string | Blob,      // URL or Blob
-  filename: string,           // e.g. "PhotoSocial-squad-2025.jpg"
-}
-```
+Party and solo export screens offer **Download** only (JPEG from server final collage, or PNG via client `html2canvas` fallback).
 
 **Behavior:**
-- If `source` is URL: fetches, converts to `Blob`, then downloads
 - Creates invisible `<a download>` element, clicks programmatically
-- Works on iOS Safari via `window.open(dataUrl)` fallback
-
----
-
-### `sendCollageByEmail(email, sessionId, scope)`
-Emails a download link to the provided address.
-
-**Input:**
-```ts
-{
-  email: string,
-  sessionId: string,
-  scope: "full-collage" | "my-tile",
-  recipientName?: string,
-}
-```
-
-**Behavior:**
-- Validates email format client-side before sending
-- Server sends transactional email containing:
-  - Hosted image preview (inline)
-  - Direct download link (signed, 72h expiry)
-  - "Powered by PhotoSocial" footer
-- Email address is not stored beyond the delivery queue flush
-
-**Rate limiting:** Max 3 email sends per participant per session.
+- Party: filename includes party code; solo: `PhotoSocial-solo.png`
 
 ---
 
@@ -561,10 +522,8 @@ All API responses follow:
 | Camera permission denied | Show permission guide modal with OS-specific instructions |
 | Upload fails | Retry up to 3 times with exponential backoff; show "Upload failed — tap to retry" |
 | PartyKit disconnects | Show "Reconnecting…" banner; suppress for < 2s (brief drops) |
-| Email after collage TTL | `COLLAGE_EXPIRED` — prompt download from export screen |
 | Session expired mid-use | Show modal: "This party has ended. Download your photo before it's gone." |
 | Invalid Party Code | Inline error with shake animation on input field |
-| Email send fails | Show error; offer direct download as fallback |
 
 ---
 

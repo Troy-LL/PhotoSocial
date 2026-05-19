@@ -64,11 +64,4 @@ export const setThemeSchema = z.object({
   customHue: z.number().min(0).max(360).optional(),
 });
 
-export const emailSchema = z.object({
-  email: z.string().email(),
-  scope: z.enum(["full-collage", "my-tile"]),
-  consentCloudSave: z.boolean(),
-  recipientName: z.string().optional(),
-});
-
 export const filterKeySchema = z.enum(["none", "bw", "warm", "cool", "fade"]);

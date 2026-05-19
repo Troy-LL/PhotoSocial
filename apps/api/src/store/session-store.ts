@@ -12,7 +12,6 @@ import { config } from "../config.js";
 const sessions = new Map<string, Session>();
 const participants = new Map<string, Map<string, Participant>>();
 const partyCodeIndex = new Map<string, string>();
-const emailCounts = new Map<string, number>();
 
 export function getSessionDir(sessionId: string): string {
   return join(config.dataDir, sessionId);
@@ -51,7 +50,6 @@ export function deleteSession(sessionId: string): void {
   }
   sessions.delete(sessionId);
   participants.delete(sessionId);
-  emailCounts.delete(sessionId);
 }
 
 export function getParticipants(sessionId: string): Participant[] {
@@ -153,14 +151,6 @@ export function removeGlobalSticker(
   );
   sessions.set(sessionId, session);
   return session.globalStickers.length < before;
-}
-
-export function getEmailCount(sessionId: string): number {
-  return emailCounts.get(sessionId) ?? 0;
-}
-
-export function incrementEmailCount(sessionId: string): void {
-  emailCounts.set(sessionId, getEmailCount(sessionId) + 1);
 }
 
 export function isPartyCodeTaken(code: string): boolean {

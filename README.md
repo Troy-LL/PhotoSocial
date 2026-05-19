@@ -19,7 +19,7 @@ pnpm dev
 - PartyKit: http://127.0.0.1:1999 (realtime rooms)
 - Health: http://localhost:3001/health
 
-Copy `.env.example` to `apps/api/.env` and set `JWT_SECRET`, `PARTYKIT_HOST`, and `PARTYKIT_BROADCAST_SECRET` (must match `apps/party/.env`). Optional: Supabase (opt-in cloud storage) or Mailpit (local email on port 1025).
+Copy `.env.example` to `apps/api/.env` and set `JWT_SECRET`, `PARTYKIT_HOST`, and `PARTYKIT_BROADCAST_SECRET` (must match `apps/party/.env`).
 
 For party mode realtime, all three processes must run (`pnpm dev` starts web, API, and PartyKit).
 
@@ -43,13 +43,21 @@ pnpm test:e2e     # Playwright E2E (starts dev servers)
 
 ## Privacy
 
-Sessions are stored in memory and temp files on the API server. Individual slot photos are deleted when the host locks the collage; the server-rendered final collage is kept for about 1 hour for email export, then removed. Full session cleanup happens on expiry (24h max, 2h idle). Cloud upload (Supabase) only happens when a user explicitly consents on the export screen.
+Sessions are stored in memory and temp files on the API server. Individual slot photos are deleted when the host locks the collage; the server-rendered final collage is kept for about 1 hour so guests can download it, then removed. Full session cleanup happens on expiry (24h max, 2h idle). Export is download-only (no email).
 
 ## Deploy (Vercel + PartyKit)
 
-- **Web:** root `vercel.json` — set `VITE_API_URL` and `VITE_PARTYKIT_HOST`.
+No environment variables in the Vercel dashboard. Edit **[config/deploy.production.json](config/deploy.production.json)** once:
+
+| Field | Example |
+|--------|---------|
+| `apiOrigin` | `https://photosocial-api.onrender.com` |
+| `partykitHost` | `photosocial-party.you.partykit.dev` |
+
+Vercel’s build runs `scripts/sync-vercel-deploy.mjs`, which wires `/api` → your API and the web app reads `partykitHost` from that same file.
+
 - **PartyKit:** `pnpm --filter @photosocial/party deploy` — set `JWT_SECRET` and `PARTYKIT_BROADCAST_SECRET` in the PartyKit dashboard (same values as the API).
-- **API:** host on Railway, Render, or Fly with `DATA_DIR` volume; set `PARTYKIT_HOST` to your PartyKit host.
+- **API:** host on Railway, Render, or Fly with `DATA_DIR` volume; set `PARTYKIT_HOST` to your PartyKit host and `CORS_ORIGIN` to your Vercel URL.
 
 ## Docs
 

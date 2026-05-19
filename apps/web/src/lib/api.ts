@@ -133,21 +133,6 @@ export const api = {
       method: "DELETE",
       headers: authHeaders(token),
     }),
-
-  sendEmail: (
-    sessionId: string,
-    token: string,
-    body: {
-      email: string;
-      scope: "full-collage" | "my-tile";
-      consentCloudSave: boolean;
-    }
-  ) =>
-    request(`/sessions/${sessionId}/email`, {
-      method: "POST",
-      headers: authHeaders(token),
-      body: JSON.stringify(body),
-    }),
 };
 
 export function photoUrl(path: string): string {

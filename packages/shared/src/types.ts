@@ -89,7 +89,7 @@ export interface Session {
   lastActivityAt: string;
   status: SessionStatus;
   finalCollageUrl?: string;
-  /** ISO timestamp when server final collage file is deleted (email window). */
+  /** ISO timestamp when server final collage file is deleted (download window). */
   finalCollageExpiresAt?: string;
   globalStickers: Sticker[];
 }

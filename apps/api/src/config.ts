@@ -10,12 +10,4 @@ export const config = {
   partykitBroadcastSecret:
     process.env.PARTYKIT_BROADCAST_SECRET || "dev-party-broadcast-secret",
   maxParticipants: 20,
-  supabaseUrl: process.env.SUPABASE_URL,
-  supabaseKey: process.env.SUPABASE_SERVICE_ROLE_KEY,
-  supabaseBucket: process.env.SUPABASE_BUCKET || "PhotoSocial",
-  smtp: {
-    host: process.env.SMTP_HOST || "localhost",
-    port: Number(process.env.SMTP_PORT) || 1025,
-    from: process.env.SMTP_FROM || "noreply@photosocial.local",
-  },
 };

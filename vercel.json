@@ -1,7 +1,16 @@
 {
-  "buildCommand": "pnpm --filter @photosocial/shared build && pnpm --filter @photosocial/web build",
+  "buildCommand": "node scripts/sync-vercel-deploy.mjs && pnpm --filter @photosocial/shared build && pnpm --filter @photosocial/web build",
   "outputDirectory": "apps/web/dist",
   "installCommand": "pnpm install",
   "framework": null,
-  "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
+  "rewrites": [
+    {
+      "source": "/api/:path*",
+      "destination": "https://REPLACE_WITH_YOUR_API_HOST/api/:path*"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
 }

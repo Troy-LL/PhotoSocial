@@ -43,9 +43,6 @@
   "viewCollage": "View collage",
   "lockCollage": "Lock collage",
   "download": "Download",
-  "email": "Email me",
-  "emailPlaceholder": "you@example.com",
-  "consentCloud": "Save a copy to the cloud so my download link works for 72 hours",
   "makeAnother": "Make another!",
   "reconnecting": "Reconnecting…",
   "partyEnded": "This party has ended.",
@@ -77,7 +74,5 @@
   "tryCameraAgain": "Try again",
   "uploadFailed": "Upload failed — tap to retry",
   "allPhotosIn": "All photos are in!",
-  "sendEmail": "Send",
-  "collageEmailWindow": "Email links work for about 1 hour after you lock the collage. Download your strip to keep it forever.",
-  "collageExpired": "The server copy of this collage has expired. Use Download to save from your screen."
+  "collageDownloadWindow": "Download your collage soon — the server copy is removed about an hour after the party locks."
 }

@@ -1,9 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import confetti from "canvas-confetti";
 import { useSession } from "../context/SessionContext";
 import { CollageGrid } from "../features/collage/CollageGrid";
-import { api } from "../lib/api";
 import { clearSession } from "../lib/session-storage";
 import { Button } from "../components/Button";
 import styles from "./ExportPage.module.css";
@@ -11,10 +10,6 @@ import styles from "./ExportPage.module.css";
 export function ExportPage() {
   const { t } = useTranslation();
   const { stored, state, loading } = useSession();
-  const [email, setEmail] = useState("");
-  const [consent, setConsent] = useState(false);
-  const [emailSent, setEmailSent] = useState(false);
-  const [emailError, setEmailError] = useState("");
 
   useEffect(() => {
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -51,20 +46,6 @@ export function ExportPage() {
     link.click();
   }
 
-  async function sendEmail() {
-    setEmailError("");
-    const res = await api.sendEmail(stored!.sessionId, stored!.wsToken, {
-      email,
-      scope: "full-collage",
-      consentCloudSave: consent,
-    });
-    if (res.success) {
-      setEmailSent(true);
-    } else {
-      setEmailError(res.error.message);
-    }
-  }
-
   function handleMakeAnother() {
     clearSession();
     window.location.href = "/";
@@ -87,40 +68,12 @@ export function ExportPage() {
       )}
 
       {state.session.finalCollageExpiresAt && (
-        <p className={styles.hint}>{t("collageEmailWindow")}</p>
+        <p className={styles.hint}>{t("collageDownloadWindow")}</p>
       )}
 
       <Button fullWidth onClick={downloadCollage}>
         {t("download")}
       </Button>
-
-      <fieldset className={styles.emailField}>
-        <legend>{t("email")}</legend>
-        <input
-          type="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          placeholder={t("emailPlaceholder")}
-          className={styles.emailInput}
-        />
-        <label className={styles.consent}>
-          <input
-            type="checkbox"
-            checked={consent}
-            onChange={(e) => setConsent(e.target.checked)}
-          />
-          {t("consentCloud")}
-        </label>
-        <Button
-          variant="secondary"
-          fullWidth
-          onClick={sendEmail}
-          disabled={!email || emailSent}
-        >
-          {emailSent ? "Sent!" : t("sendEmail")}
-        </Button>
-        {emailError && <p className={styles.error}>{emailError}</p>}
-      </fieldset>
 
       <Button variant="ghost" fullWidth onClick={handleMakeAnother}>
         {t("makeAnother")}

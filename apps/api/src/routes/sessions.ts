@@ -2,7 +2,6 @@ import {
   assignSlotSchema,
   clearSlotPhotoSchema,
   createSessionSchema,
-  emailSchema,
   joinSessionSchema,
   placeStickerSchema,
   setThemeSchema,
@@ -11,15 +10,12 @@ import {
 import { Hono } from "hono";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
-import { config } from "../config.js";
 import { err, ok } from "../lib/api-response.js";
 import { checkRateLimit } from "../lib/rate-limit.js";
 import { verifyWsToken, type WsTokenPayload } from "../lib/jwt.js";
 import * as sessionService from "../services/session-service.js";
 import * as imageService from "../services/image-service.js";
 import * as stickerService from "../services/sticker-service.js";
-import * as emailService from "../services/email-service.js";
-import { uploadToSupabase } from "../services/supabase-storage.js";
 import * as store from "../store/session-store.js";
 import { broadcast } from "../lib/party-broadcast.js";
 import { getSessionDir } from "../store/session-store.js";
@@ -392,65 +388,6 @@ sessionRoutes.delete("/stickers/:stickerId", async (c) => {
     stickerId: c.req.param("stickerId"),
   });
   return c.json(ok(result));
-});
-
-sessionRoutes.post("/email", async (c) => {
-  const auth = c.get("auth");
-  const body = await c.req.json();
-  const parsed = emailSchema.safeParse(body);
-  if (!parsed.success) {
-    return c.json(err("VALIDATION_ERROR", parsed.error.message), 400);
-  }
-
-  if (store.getEmailCount(auth.sessionId) >= 3) {
-    return c.json(err("RATE_LIMITED", "Max 3 emails per session"), 429);
-  }
-
-  const session = store.getSession(auth.sessionId);
-  if (!session) return c.json(err("SESSION_NOT_FOUND", "Not found"), 404);
-
-  if (!session.finalCollageUrl) {
-    return c.json(
-      err(
-        "COLLAGE_EXPIRED",
-        "The download window for this collage has ended. Save it from the export screen next time."
-      ),
-      410
-    );
-  }
-
-  let downloadUrl = session.finalCollageUrl;
-  const apiBase = `http://localhost:${config.port}`;
-
-  if (parsed.data.consentCloudSave) {
-    const finalPath = join(getSessionDir(session.id), "final-collage.jpg");
-    try {
-      const cloud = await uploadToSupabase(
-        finalPath,
-        `${session.id}/final-${Date.now()}.jpg`
-      );
-      if (cloud) downloadUrl = cloud;
-    } catch {
-      /* use local */
-    }
-  }
-
-  if (!downloadUrl.startsWith("http")) {
-    downloadUrl = `${apiBase}${downloadUrl}`;
-  }
-
-  try {
-    await emailService.sendCollageEmail(
-      parsed.data.email,
-      downloadUrl,
-      parsed.data.scope
-    );
-    store.incrementEmailCount(auth.sessionId);
-    return c.json(ok({ sent: true }));
-  } catch (e) {
-    console.error("Email failed", e);
-    return c.json(err("EMAIL_FAILED", "Could not send email"), 500);
-  }
 });
 
 const authedRoutes = new Hono().route("/:sessionId", sessionRoutes);
