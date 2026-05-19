@@ -1,37 +1,74 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { FilterKey } from "@photosocial/shared";
 
-const FILTER_CSS: Record<FilterKey, string> = {
-  none: "none",
-  bw: "grayscale(1)",
-  warm: "sepia(0.35) saturate(1.2)",
-  cool: "hue-rotate(180deg) saturate(0.8)",
-  fade: "contrast(0.9) brightness(1.1) saturate(0.7)",
-};
+function attachStreamToVideo(video: HTMLVideoElement, media: MediaStream) {
+  if (video.srcObject !== media) {
+    video.srcObject = media;
+  }
+  void video.play().catch(() => {});
+}
 
 export function useCamera() {
-  const videoRef = useRef<HTMLVideoElement>(null);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [mirror, setMirror] = useState(true);
-  const [filter, setFilter] = useState<FilterKey>("none");
   const [facingMode, setFacingMode] = useState<"user" | "environment">("user");
+  const [videoReady, setVideoReady] = useState(false);
+
+  const markVideoReady = useCallback((video: HTMLVideoElement) => {
+    setVideoReady(video.videoWidth > 0 && video.videoHeight > 0);
+  }, []);
+
+  const videoListenersCleanupRef = useRef<(() => void) | null>(null);
+
+  const setVideoRef = useCallback(
+    (node: HTMLVideoElement | null) => {
+      videoListenersCleanupRef.current?.();
+      videoListenersCleanupRef.current = null;
+      videoRef.current = node;
+
+      if (!node) {
+        setVideoReady(false);
+        return;
+      }
+
+      const onReady = () => markVideoReady(node);
+      node.addEventListener("loadeddata", onReady);
+      node.addEventListener("loadedmetadata", onReady);
+      node.addEventListener("resize", onReady);
+      videoListenersCleanupRef.current = () => {
+        node.removeEventListener("loadeddata", onReady);
+        node.removeEventListener("loadedmetadata", onReady);
+        node.removeEventListener("resize", onReady);
+      };
+
+      if (streamRef.current) {
+        attachStreamToVideo(node, streamRef.current);
+      }
+      onReady();
+    },
+    [markVideoReady]
+  );
 
   const init = useCallback(async (facing: "user" | "environment" = "user") => {
     setError(null);
     try {
-      if (stream) {
-        stream.getTracks().forEach((t) => t.stop());
-      }
+      streamRef.current?.getTracks().forEach((t) => t.stop());
       const media = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: facing, width: { ideal: 1920 }, height: { ideal: 1080 } },
+        video: {
+          facingMode: facing,
+          width: { ideal: 1920 },
+          height: { ideal: 1080 },
+        },
         audio: false,
       });
+      streamRef.current = media;
       setStream(media);
+      setVideoReady(false);
       setFacingMode(facing);
       if (videoRef.current) {
-        videoRef.current.srcObject = media;
-        await videoRef.current.play();
+        attachStreamToVideo(videoRef.current, media);
       }
     } catch {
       try {
@@ -39,28 +76,31 @@ export function useCamera() {
           video: true,
           audio: false,
         });
+        streamRef.current = media;
         setStream(media);
+        setVideoReady(false);
         if (videoRef.current) {
-          videoRef.current.srcObject = media;
-          await videoRef.current.play();
+          attachStreamToVideo(videoRef.current, media);
         }
       } catch {
+        streamRef.current = null;
+        setStream(null);
         setError("denied");
       }
     }
-  }, [stream]);
+  }, []);
 
   useEffect(() => {
     void init("user");
     return () => {
-      stream?.getTracks().forEach((t) => t.stop());
+      streamRef.current?.getTracks().forEach((t) => t.stop());
+      streamRef.current = null;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [init]);
 
   const capture = useCallback((): Blob | null => {
     const video = videoRef.current;
-    if (!video || !stream) return null;
+    if (!video || !streamRef.current) return null;
 
     const canvas = document.createElement("canvas");
     canvas.width = video.videoWidth;
@@ -73,7 +113,6 @@ export function useCamera() {
       ctx.scale(-1, 1);
     }
 
-    ctx.filter = FILTER_CSS[filter];
     ctx.drawImage(video, 0, 0);
 
     const dataUrl = canvas.toDataURL("image/jpeg", 0.92);
@@ -84,20 +123,18 @@ export function useCamera() {
       ia[i] = byteString.charCodeAt(i);
     }
     return new Blob([ab], { type: "image/jpeg" });
-  }, [stream, mirror, filter]);
+  }, [mirror]);
 
   return {
-    videoRef,
+    setVideoRef,
     stream,
+    videoReady,
     error,
     mirror,
     setMirror,
-    filter,
-    setFilter,
     facingMode,
     init,
     capture,
-    filterCss: FILTER_CSS[filter],
   };
 }
 

@@ -121,6 +121,7 @@ export function SessionProvider({
         }
         case "PARTICIPANT_JOINED":
         case "PHOTO_SUBMITTED":
+        case "PHOTO_CLEARED":
         case "STICKER_PLACED":
         case "STICKER_UPDATED":
         case "STICKER_DELETED":

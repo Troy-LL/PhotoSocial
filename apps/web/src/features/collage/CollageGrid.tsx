@@ -2,7 +2,12 @@ import { useDroppable } from "@dnd-kit/core";
 import { getLayoutPresetMeta, type SessionState } from "@photosocial/shared";
 import { motion } from "motion/react";
 import { PlaceholderTile } from "./PlaceholderTile";
-import { StickerLayer } from "../stickers/StickerLayer";
+import { SlotPhoto } from "../camera/SlotPhoto";
+import {
+  DEFAULT_SLOT_PHOTO_FIT,
+  slotFitAxis,
+  type SlotPhotoFit,
+} from "../camera/slot-photo-fit";
 import styles from "./CollageGrid.module.css";
 
 function SlotCell({
@@ -41,6 +46,7 @@ function SlotCell({
 interface CollageGridProps {
   state: SessionState;
   id?: string;
+  slotPhotoFits?: Record<number, SlotPhotoFit>;
   onSlotClick?: (index: number) => void;
   selectedSlot?: number | null;
   droppableSlots?: boolean;
@@ -49,6 +55,7 @@ interface CollageGridProps {
 export function CollageGrid({
   state,
   id = "collage-export",
+  slotPhotoFits = {},
   onSlotClick,
   selectedSlot,
   droppableSlots = false,
@@ -86,13 +93,16 @@ export function CollageGrid({
             }}
           >
             {hasPhoto ? (
-              <motion.img
+              <SlotPhoto
                 src={slotState!.photoUrl!}
                 alt={slotState!.displayName ?? `Slot ${slotDef.index + 1}`}
-                className={styles.photo}
-                initial={{ scale: 1.04 }}
-                animate={{ scale: 1 }}
-                transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                axis={slotFitAxis(
+                  slotDef.rowSpan,
+                  slotDef.colSpan,
+                  meta.orientation
+                )}
+                fit={slotPhotoFits[slotDef.index] ?? DEFAULT_SLOT_PHOTO_FIT}
+                className={styles.slotMedia}
               />
             ) : (
               <PlaceholderTile
@@ -100,13 +110,9 @@ export function CollageGrid({
                 index={slotDef.index}
               />
             )}
-            {slotState?.stickers && (
-              <StickerLayer stickers={slotState.stickers} readonly />
-            )}
           </SlotCell>
         );
       })}
-      <StickerLayer stickers={collage.globalStickers} readonly />
     </div>
   );
 }

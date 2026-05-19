@@ -40,7 +40,11 @@ export function ExportPage() {
     const { default: html2canvas } = await import("html2canvas");
     const el = document.getElementById("collage-export");
     if (!el) return;
-    const canvas = await html2canvas(el, { scale: 2, useCORS: true });
+    const canvas = await html2canvas(el, {
+      scale: 2,
+      useCORS: true,
+      logging: false,
+    });
     const link = document.createElement("a");
     link.download = `PhotoSocial-${stored!.partyCode}.png`;
     link.href = canvas.toDataURL("image/png");

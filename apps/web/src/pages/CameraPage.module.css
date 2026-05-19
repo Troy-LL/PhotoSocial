@@ -1,7 +1,54 @@
 .page {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 12px;
+  min-height: 0;
+  flex: 1;
+  width: 100%;
+  padding-inline: max(0px, env(safe-area-inset-left)) max(0px, env(safe-area-inset-right));
+}
+
+@media (max-width: 767px) {
+  .page {
+    gap: 8px;
+    min-height: 100dvh;
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  .pageReview {
+    min-height: 0;
+    gap: 6px;
+  }
+}
+
+.pageReview {
+  flex: 1;
+  min-height: 0;
+}
+
+@media (min-width: 768px) {
+  .page {
+    gap: 16px;
+    max-width: 1100px;
+    margin-inline: auto;
+    width: 100%;
+  }
+
+  .pageReview {
+    max-height: 100dvh;
+    overflow: hidden;
+  }
+
+  .pageReview .wrap {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: visible;
+  }
+
+  .notice {
+    padding: 14px 20px;
+    font-size: 1.0625rem;
+  }
 }
 
 .waiting {
@@ -15,6 +62,15 @@
   border-radius: var(--radius-btn);
   text-align: center;
   font-weight: 600;
+}
+
+.getReadyNotice {
+  background: color-mix(in srgb, var(--color-accent) 22%, var(--color-surface));
+  font-size: 1.05rem;
+}
+
+.readyBar {
+  padding: 0 4px 8px;
 }
 
 .retry {

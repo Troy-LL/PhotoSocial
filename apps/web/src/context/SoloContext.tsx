@@ -8,6 +8,10 @@ import {
 } from "react";
 import { createLayout, type LayoutPreset, type ThemeKey } from "@photosocial/shared";
 import {
+  DEFAULT_SLOT_PHOTO_FIT,
+  type SlotPhotoFit,
+} from "../features/camera/slot-photo-fit";
+import {
   buildSoloSessionState,
   clearSoloPrefs,
   loadSoloPrefs,
@@ -26,6 +30,8 @@ interface SoloContextValue {
   sessionState: ReturnType<typeof buildSoloSessionState> | null;
   startSession: (layout: LayoutPreset, theme: ThemeKey, customHue?: number) => void;
   setPhoto: (slotIndex: number, blob: Blob) => void;
+  setPhotoFit: (slotIndex: number, fit: SlotPhotoFit) => void;
+  clearPhoto: (slotIndex: number) => void;
   reset: () => void;
 }
 
@@ -34,7 +40,7 @@ const SoloContext = createContext<SoloContextValue | null>(null);
 function reviveFromStorage(): SoloSessionData | null {
   const prefs = loadSoloPrefs();
   if (!prefs?.layout) return null;
-  return { ...prefs, photos: {} };
+  return { ...prefs, photos: {}, photoFits: {} };
 }
 
 export function SoloProvider({ children }: { children: ReactNode }) {
@@ -56,7 +62,13 @@ export function SoloProvider({ children }: { children: ReactNode }) {
 
   const startSession = useCallback(
     (layout: LayoutPreset, theme: ThemeKey, customHue?: number) => {
-      const next: SoloSessionData = { layout, theme, customHue, photos: {} };
+      const next: SoloSessionData = {
+        layout,
+        theme,
+        customHue,
+        photos: {},
+        photoFits: {},
+      };
       saveSoloPrefs({ layout, theme, customHue });
       setData(next);
       applyTheme({ theme, customHue: theme === "custom" ? customHue : undefined });
@@ -74,11 +86,36 @@ export function SoloProvider({ children }: { children: ReactNode }) {
         return {
           ...prev,
           photos: { ...prev.photos, [slotIndex]: url },
+          photoFits: {
+            ...prev.photoFits,
+            [slotIndex]: prev.photoFits[slotIndex] ?? DEFAULT_SLOT_PHOTO_FIT,
+          },
         };
       });
     },
     []
   );
+
+  const setPhotoFit = useCallback((slotIndex: number, fit: SlotPhotoFit) => {
+    setData((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        photoFits: { ...prev.photoFits, [slotIndex]: fit },
+      };
+    });
+  }, []);
+
+  const clearPhoto = useCallback((slotIndex: number) => {
+    setData((prev) => {
+      if (!prev) return prev;
+      const oldUrl = prev.photos[slotIndex];
+      if (oldUrl?.startsWith("blob:")) URL.revokeObjectURL(oldUrl);
+      const { [slotIndex]: _removed, ...photos } = prev.photos;
+      const { [slotIndex]: _removedFit, ...photoFits } = prev.photoFits;
+      return { ...prev, photos, photoFits };
+    });
+  }, []);
 
   const reset = useCallback(() => {
     setData((prev) => {
@@ -95,9 +132,20 @@ export function SoloProvider({ children }: { children: ReactNode }) {
       sessionState,
       startSession,
       setPhoto,
+      setPhotoFit,
+      clearPhoto,
       reset,
     }),
-    [data, slotCount, sessionState, startSession, setPhoto, reset]
+    [
+      data,
+      slotCount,
+      sessionState,
+      startSession,
+      setPhoto,
+      setPhotoFit,
+      clearPhoto,
+      reset,
+    ]
   );
 
   return <SoloContext.Provider value={value}>{children}</SoloContext.Provider>;

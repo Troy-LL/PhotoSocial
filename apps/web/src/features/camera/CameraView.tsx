@@ -1,35 +1,82 @@
-import { useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import { useTranslation } from "react-i18next";
-import { createLayout, type FilterKey, type LayoutPreset } from "@photosocial/shared";
+import { createLayout, type LayoutPreset } from "@photosocial/shared";
 import { Button } from "../../components/Button";
 import { CameraPermissionPlaceholder } from "./CameraPermissionPlaceholder";
 import { useCamera, startCountdown } from "./useCamera";
+import {
+  getAutoPauseMs,
+  getCollageFlashMs,
+  loadAutoShootPreference,
+  saveAutoShootPreference,
+} from "./camera-preferences";
+import { useMediaQuery } from "./useMediaQuery";
+import { SlotPhoto } from "./SlotPhoto";
+import {
+  DEFAULT_SLOT_PHOTO_FIT,
+  slotFitAxis,
+  type SlotPhotoFit,
+} from "./slot-photo-fit";
 import styles from "./CameraView.module.css";
 
-const FILTERS: FilterKey[] = ["none", "bw", "warm", "cool", "fade"];
 const COUNTDOWNS = [3, 5, 10] as const;
 
 interface CameraViewProps {
-  onCapture: (blob: Blob) => void;
+  onCapture: (blob: Blob) => boolean | void | Promise<boolean | void>;
   onCancel?: () => void;
   frameOverlay?: {
     preset: LayoutPreset;
     assignedSlot: number;
   };
+  slotPhotos?: Record<number, string>;
+  slotPhotoFits?: Record<number, SlotPhotoFit>;
+  /** Tap a filled slot — parent shows retake / adjust framing */
+  onSlotInteract?: (slotIndex: number) => void;
+  /** @deprecated Use onSlotInteract; immediate retake without menu */
+  onSlotSelect?: (slotIndex: number) => void;
+  canRetakeSlot?: (slotIndex: number) => boolean;
+  continuous?: boolean;
+  captureDisabled?: boolean;
+  doneAction?: ReactNode;
+  /** Shown during auto-pause between shots */
+  photoProgress?: { current: number; total: number };
+  /** Bump to schedule auto countdown (e.g. after retaking a slot) */
+  autoResumeKey?: number;
+  /** Replace camera with full collage; tap slots for retake / framing */
+  reviewMode?: boolean;
 }
 
-export function CameraView({ onCapture, onCancel, frameOverlay }: CameraViewProps) {
+export function CameraView({
+  onCapture,
+  onCancel,
+  frameOverlay,
+  slotPhotos = {},
+  slotPhotoFits = {},
+  onSlotInteract,
+  onSlotSelect,
+  canRetakeSlot,
+  continuous = Boolean(frameOverlay),
+  captureDisabled = false,
+  doneAction,
+  photoProgress,
+  autoResumeKey = 0,
+  reviewMode = false,
+}: CameraViewProps) {
   const { t } = useTranslation();
   const {
-    videoRef,
+    setVideoRef,
     error,
     mirror,
     setMirror,
-    filter,
-    setFilter,
     capture,
-    filterCss,
     stream,
+    videoReady,
     init,
   } = useCamera();
 
@@ -38,37 +85,214 @@ export function CameraView({ onCapture, onCancel, frameOverlay }: CameraViewProp
   const [countdown, setCountdown] = useState<number | null>(null);
   const [flash, setFlash] = useState(false);
   const [countdownSec, setCountdownSec] = useState<3 | 5 | 10>(3);
+  const [capturing, setCapturing] = useState(false);
+  const [autoShoot, setAutoShoot] = useState(loadAutoShootPreference);
+  const [getReadyHint, setGetReadyHint] = useState<string | null>(null);
+  const [collageFlash, setCollageFlash] = useState(false);
+
+  const isMobile = useMediaQuery("(max-width: 767px)");
+  const isMobileRef = useRef(isMobile);
+  isMobileRef.current = isMobile;
+  const collageFlashRef = useRef(collageFlash);
+  collageFlashRef.current = collageFlash;
+
+  const autoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const collageFlashTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const cancelCountdownRef = useRef<(() => void) | null>(null);
+  /** Auto mode only chains shots after the user has pressed Snap / Take photo once */
+  const hasStartedRef = useRef(false);
 
   const layout = frameOverlay ? createLayout(frameOverlay.preset) : null;
   const activeSlotDef = layout?.slots.find(
     (s) => s.index === frameOverlay?.assignedSlot
   );
-  const cameraDenied = Boolean(error);
-  const canUseCamera = Boolean(stream) && !error;
+  const cameraDenied = Boolean(error) && !stream;
+  const canUseCamera =
+    Boolean(stream) && videoReady && !error && !captureDisabled;
   const inStrip = Boolean(layout && activeSlotDef);
+  const isHorizontal = layout?.orientation === "horizontal";
+  const showCameraStage = inStrip;
+  const useContinuous = continuous && inStrip;
+  const isCountingDown = countdown !== null;
+  const inReview = inStrip && reviewMode;
 
-  function doCapture() {
-    const blob = capture();
-    if (!blob) return;
-    setFlash(true);
-    setTimeout(() => setFlash(false), 200);
-    if (navigator.vibrate) navigator.vibrate(50);
-    const url = URL.createObjectURL(blob);
-    setPreview(url);
-    setPreviewBlob(blob);
-  }
+  const boothStateRef = useRef({
+    autoShoot,
+    canUseCamera,
+    captureDisabled,
+    capturing,
+    countdown,
+    countdownSec,
+    photoProgress,
+    useContinuous,
+    videoReady,
+  });
+  boothStateRef.current = {
+    autoShoot,
+    canUseCamera,
+    captureDisabled,
+    capturing,
+    countdown,
+    countdownSec,
+    photoProgress,
+    useContinuous,
+    videoReady,
+  };
 
-  function handleShutter() {
-    if (preview || !canUseCamera) return;
-    setCountdown(countdownSec);
-    startCountdown(
-      countdownSec,
+  const clearCollageFlash = useCallback(() => {
+    if (collageFlashTimerRef.current) {
+      clearTimeout(collageFlashTimerRef.current);
+      collageFlashTimerRef.current = null;
+    }
+    setCollageFlash(false);
+  }, []);
+
+  const showCollageFlashRef = useRef<() => Promise<void>>(() => Promise.resolve());
+
+  showCollageFlashRef.current = () => {
+    if (!isMobileRef.current || !layout) {
+      return Promise.resolve();
+    }
+    clearCollageFlash();
+    setCollageFlash(true);
+    return new Promise<void>((resolve) => {
+      collageFlashTimerRef.current = setTimeout(() => {
+        collageFlashTimerRef.current = null;
+        setCollageFlash(false);
+        resolve();
+      }, getCollageFlashMs());
+    });
+  };
+
+  const cancelScheduled = useCallback(() => {
+    if (autoTimerRef.current) {
+      clearTimeout(autoTimerRef.current);
+      autoTimerRef.current = null;
+    }
+    cancelCountdownRef.current?.();
+    cancelCountdownRef.current = null;
+    setGetReadyHint(null);
+    clearCollageFlash();
+  }, [clearCollageFlash]);
+
+  const runCountdownRef = useRef<() => void>(() => {});
+
+  runCountdownRef.current = () => {
+    const s = boothStateRef.current;
+    if (
+      !s.canUseCamera ||
+      s.capturing ||
+      s.countdown !== null ||
+      collageFlashRef.current
+    ) {
+      return;
+    }
+
+    setCountdown(s.countdownSec);
+    cancelCountdownRef.current = startCountdown(
+      s.countdownSec,
       (n) => setCountdown(n),
       () => {
         setCountdown(null);
-        doCapture();
+        cancelCountdownRef.current = null;
+        void doCaptureRef.current();
       }
     );
+  };
+
+  const scheduleAutoCaptureRef = useRef<() => void>(() => {});
+
+  scheduleAutoCaptureRef.current = () => {
+    const s = boothStateRef.current;
+    if (!hasStartedRef.current || !s.autoShoot || !s.canUseCamera || s.captureDisabled) {
+      return;
+    }
+    cancelScheduled();
+
+    const progress = s.photoProgress;
+    if (progress && progress.total > 1) {
+      setGetReadyHint(
+        t("getReadyForPhoto", {
+          current: progress.current,
+          total: progress.total,
+        })
+      );
+    } else {
+      setGetReadyHint(t("getReadyNextShot"));
+    }
+
+    autoTimerRef.current = setTimeout(() => {
+      autoTimerRef.current = null;
+      setGetReadyHint(null);
+      runCountdownRef.current();
+    }, getAutoPauseMs());
+  };
+
+  const doCaptureRef = useRef<() => Promise<void>>(async () => {});
+
+  doCaptureRef.current = async () => {
+    const blob = capture();
+    if (!blob) {
+      if (boothStateRef.current.autoShoot) {
+        autoTimerRef.current = setTimeout(() => {
+          autoTimerRef.current = null;
+          runCountdownRef.current();
+        }, 400);
+      }
+      return;
+    }
+    setFlash(true);
+    setTimeout(() => setFlash(false), 200);
+    if (navigator.vibrate) navigator.vibrate(50);
+
+    if (boothStateRef.current.useContinuous) {
+      let continueAuto = true;
+      setCapturing(true);
+      try {
+        const result = await onCapture(blob);
+        continueAuto = result !== false;
+      } finally {
+        setCapturing(false);
+      }
+      await new Promise<void>((resolve) => {
+        requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+      });
+      await showCollageFlashRef.current();
+      if (continueAuto && boothStateRef.current.autoShoot) {
+        scheduleAutoCaptureRef.current();
+      }
+      return;
+    }
+
+    const url = URL.createObjectURL(blob);
+    setPreview(url);
+    setPreviewBlob(blob);
+  };
+
+  async function doCapture() {
+    await doCaptureRef.current();
+  }
+
+  function handleShutter() {
+    if (
+      (useContinuous ? capturing || isCountingDown || collageFlash : preview) ||
+      !canUseCamera
+    ) {
+      return;
+    }
+    hasStartedRef.current = true;
+    cancelScheduled();
+    runCountdownRef.current();
+  }
+
+  function handleAutoShootChange(enabled: boolean) {
+    setAutoShoot(enabled);
+    saveAutoShootPreference(enabled);
+    if (!enabled) {
+      cancelScheduled();
+    } else if (canUseCamera && !captureDisabled && hasStartedRef.current) {
+      scheduleAutoCaptureRef.current();
+    }
   }
 
   function handleRetake() {
@@ -78,21 +302,32 @@ export function CameraView({ onCapture, onCancel, frameOverlay }: CameraViewProp
   }
 
   function handleSubmit() {
-    if (previewBlob) onCapture(previewBlob);
+    if (previewBlob) void onCapture(previewBlob);
   }
+
+  useEffect(() => () => cancelScheduled(), [cancelScheduled]);
+
+  useEffect(() => {
+    if (autoResumeKey > 0) {
+      cancelScheduled();
+    }
+  }, [autoResumeKey, cancelScheduled]);
+
+  useEffect(() => {
+    if (captureDisabled) cancelScheduled();
+  }, [captureDisabled, cancelScheduled]);
 
   const mediaStyle = {
     transform: mirror ? "scaleX(-1)" : undefined,
-    filter: filterCss,
   };
 
-  function renderSlotMedia(compact?: boolean) {
-    if (preview) {
+  function renderCameraMedia(className: string, compact?: boolean) {
+    if (!useContinuous && preview) {
       return (
         <img
           src={preview}
-          alt="Preview"
-          className={styles.slotMedia}
+          alt={t("capturePreview")}
+          className={className}
           style={mediaStyle}
         />
       );
@@ -105,19 +340,171 @@ export function CameraView({ onCapture, onCancel, frameOverlay }: CameraViewProp
         />
       );
     }
-    if (!stream) {
-      return <div className={styles.slotLoading} aria-hidden="true" />;
-    }
     return (
-      <video
-        ref={videoRef}
-        className={styles.slotMedia}
-        playsInline
-        muted
-        style={mediaStyle}
-      />
+      <>
+        {!stream && (
+          <div className={styles.slotLoading} aria-busy="true" aria-hidden="true" />
+        )}
+        <video
+          ref={setVideoRef}
+          className={className}
+          playsInline
+          muted
+          autoPlay
+          style={mediaStyle}
+          aria-label={t("liveCameraFeed")}
+        />
+      </>
     );
   }
+
+  function renderStageOverlays() {
+    return (
+      <>
+        {flash && <div className={styles.flash} aria-hidden="true" />}
+        {getReadyHint && !isCountingDown && (
+          <div
+            className={styles.getReadyOverlay}
+            role="status"
+            aria-live="polite"
+          >
+            {getReadyHint}
+          </div>
+        )}
+        {isCountingDown && (
+          <div className={styles.countdown} aria-live="assertive">
+            {countdown}
+          </div>
+        )}
+      </>
+    );
+  }
+
+  function handleFilledSlotPress(slotIndex: number) {
+    if (onSlotInteract) {
+      onSlotInteract(slotIndex);
+    } else {
+      onSlotSelect?.(slotIndex);
+    }
+  }
+
+  function renderStripGrid(variant: "aside" | "flash" | "review" = "aside") {
+    const stripLabel = photoProgress
+      ? t("collageStripProgress", {
+          current: photoProgress.current,
+          total: photoProgress.total,
+        })
+      : t("collageStripPreview");
+
+    return (
+      <div
+        className={`${styles.strip} ${
+          variant === "flash" ? styles.collageFlashStrip : ""
+        } ${variant === "review" ? styles.collageReviewStrip : ""} ${
+          layout!.orientation === "vertical"
+            ? styles.stripVertical
+            : styles.stripHorizontal
+        }`}
+        style={{
+          gridTemplateColumns: `repeat(${layout!.cols}, 1fr)`,
+          gridTemplateRows: `repeat(${layout!.rows}, 1fr)`,
+          aspectRatio: layout!.aspectRatio,
+        }}
+        role="group"
+        aria-label={stripLabel}
+      >
+        {layout!.slots.map((slot) => {
+          const cellStyle = {
+            gridRow: `${slot.row + 1} / span ${slot.rowSpan}`,
+            gridColumn: `${slot.col + 1} / span ${slot.colSpan}`,
+          };
+          const photoUrl = slotPhotos[slot.index];
+          const isActive =
+            !inReview && slot.index === frameOverlay!.assignedSlot;
+          const retakable =
+            Boolean(photoUrl) &&
+            (canRetakeSlot
+              ? canRetakeSlot(slot.index)
+              : Boolean(onSlotInteract || onSlotSelect));
+          const axis = slotFitAxis(
+            slot.rowSpan,
+            slot.colSpan,
+            layout!.orientation
+          );
+          const fit = slotPhotoFits[slot.index] ?? DEFAULT_SLOT_PHOTO_FIT;
+
+          if (photoUrl) {
+            const cell = (
+              <>
+                <SlotPhoto
+                  src={photoUrl}
+                  alt={t("slotPhotoAlt", { slot: slot.index + 1 })}
+                  axis={axis}
+                  fit={fit}
+                  className={styles.slotPhoto}
+                />
+                {isActive && (
+                  <span className={styles.activeBadge} aria-hidden="true" />
+                )}
+              </>
+            );
+
+            if (retakable && (onSlotInteract || onSlotSelect)) {
+              return (
+                <button
+                  key={slot.index}
+                  type="button"
+                  className={`${styles.filledSlot} ${isActive ? styles.filledSlotActive : ""}`}
+                  style={cellStyle}
+                  onClick={() => handleFilledSlotPress(slot.index)}
+                  aria-label={t("slotPhotoActions", { slot: slot.index + 1 })}
+                  aria-current={isActive ? "true" : undefined}
+                >
+                  {cell}
+                </button>
+              );
+            }
+
+            return (
+              <div
+                key={slot.index}
+                className={`${styles.filledSlot} ${isActive ? styles.filledSlotActive : ""}`}
+                style={cellStyle}
+                aria-hidden={!isActive}
+              >
+                {cell}
+              </div>
+            );
+          }
+
+          if (isActive) {
+            return (
+              <div
+                key={slot.index}
+                className={styles.liveSlot}
+                style={cellStyle}
+                aria-current="true"
+                aria-label={t("activeSlot", { slot: slot.index + 1 })}
+              >
+                <div className={styles.liveSlotMarker} aria-hidden="true" />
+              </div>
+            );
+          }
+
+          return (
+            <div
+              key={slot.index}
+              className={styles.emptySlot}
+              style={cellStyle}
+              aria-hidden="true"
+            />
+          );
+        })}
+      </div>
+    );
+  }
+
+  const shutterLabel = autoShoot ? t("takePhotoNow") : t("takePhoto");
 
   const controls = (
     <div className={styles.controls}>
@@ -125,49 +512,94 @@ export function CameraView({ onCapture, onCancel, frameOverlay }: CameraViewProp
         <p className={styles.permissionBanner}>{t("cameraPermissionHint")}</p>
       )}
 
-      <div className={styles.filterRow}>
-        {FILTERS.map((f) => (
+      {!inReview && (
+      <div className={styles.settingsRow}>
+        <div className={styles.settingGroup}>
           <button
-            key={f}
             type="button"
-            className={`${styles.filterBtn} ${filter === f ? styles.active : ""}`}
-            onClick={() => setFilter(f)}
+            className={`${styles.optionBtn} ${styles.mirrorBtn} ${mirror ? styles.active : ""}`}
+            aria-pressed={mirror}
+            onClick={() => setMirror((m) => !m)}
             disabled={!canUseCamera}
           >
-            {f}
+            {t("mirror")}
           </button>
-        ))}
+        </div>
+
+        <div className={styles.settingGroup}>
+          <span className={styles.settingLabel} id="camera-auto-label">
+            {t("shootMode")}
+          </span>
+          <div
+            className={styles.segmented}
+            role="radiogroup"
+            aria-labelledby="camera-auto-label"
+          >
+            <button
+              type="button"
+              role="radio"
+              aria-checked={autoShoot}
+              className={`${styles.optionBtn} ${autoShoot ? styles.active : ""}`}
+              onClick={() => handleAutoShootChange(true)}
+              disabled={!canUseCamera && !autoShoot}
+            >
+              {t("shootModeAuto")}
+            </button>
+            <button
+              type="button"
+              role="radio"
+              aria-checked={!autoShoot}
+              className={`${styles.optionBtn} ${!autoShoot ? styles.active : ""}`}
+              onClick={() => handleAutoShootChange(false)}
+            >
+              {t("shootModeManual")}
+            </button>
+          </div>
+        </div>
+
+        <div className={styles.settingGroup}>
+          <span className={styles.settingLabel} id="camera-countdown-label">
+            {t("countdown")}
+          </span>
+          <div
+            className={styles.segmented}
+            role="radiogroup"
+            aria-labelledby="camera-countdown-label"
+          >
+            {COUNTDOWNS.map((n) => (
+              <button
+                key={n}
+                type="button"
+                role="radio"
+                aria-checked={countdownSec === n}
+                className={`${styles.optionBtn} ${countdownSec === n ? styles.active : ""}`}
+                onClick={() => setCountdownSec(n)}
+                disabled={!canUseCamera}
+              >
+                {t("countdownSeconds", { seconds: n })}
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
-
-      <label className={styles.toggle}>
-        <input
-          type="checkbox"
-          checked={mirror}
-          onChange={(e) => setMirror(e.target.checked)}
-          disabled={!canUseCamera}
-        />
-        {t("mirror")}
-      </label>
-
-      <label className={styles.toggle}>
-        {t("countdown")}{" "}
-        <select
-          value={countdownSec}
-          onChange={(e) =>
-            setCountdownSec(Number(e.target.value) as 3 | 5 | 10)
-          }
-          disabled={!canUseCamera}
-        >
-          {COUNTDOWNS.map((n) => (
-            <option key={n} value={n}>
-              {n}s
-            </option>
-          ))}
-        </select>
-      </label>
+      )}
 
       <div className={styles.actions}>
-        {preview ? (
+        {inReview ? (
+          doneAction
+        ) : useContinuous ? (
+          <>
+            <Button
+              onClick={handleShutter}
+              fullWidth
+              disabled={!canUseCamera || capturing || isCountingDown || collageFlash}
+              aria-label={shutterLabel}
+            >
+              {capturing ? t("savingPhoto") : shutterLabel}
+            </Button>
+            {doneAction}
+          </>
+        ) : preview ? (
           <>
             <Button variant="secondary" onClick={handleRetake}>
               {t("retake")}
@@ -186,86 +618,59 @@ export function CameraView({ onCapture, onCancel, frameOverlay }: CameraViewProp
       </div>
 
       {onCancel && (
-        <Button variant="ghost" fullWidth onClick={onCancel}>
-          Back
-        </Button>
+        <div className={styles.controlsBack}>
+          <Button variant="ghost" fullWidth onClick={onCancel}>
+            {t("back")}
+          </Button>
+        </div>
       )}
     </div>
   );
 
   return (
     <div className={styles.wrap}>
-      {flash && <div className={styles.flash} aria-hidden="true" />}
-      {countdown !== null && (
-        <div className={styles.countdown} aria-live="assertive">
-          {countdown}
-        </div>
-      )}
-
       {inStrip ? (
-        <div className={styles.stripStage}>
-          <div
-            className={`${styles.strip} ${
-              layout!.orientation === "vertical"
-                ? styles.stripVertical
-                : styles.stripHorizontal
-            }`}
-            style={{
-              gridTemplateColumns: `repeat(${layout!.cols}, 1fr)`,
-              gridTemplateRows: `repeat(${layout!.rows}, 1fr)`,
-            }}
-            role="img"
-            aria-label="Collage frame preview"
-          >
-            {layout!.slots.map((slot) => {
-              const cellStyle = {
-                gridRow: `${slot.row + 1} / span ${slot.rowSpan}`,
-                gridColumn: `${slot.col + 1} / span ${slot.colSpan}`,
-              };
-              const isActive = slot.index === frameOverlay!.assignedSlot;
-
-              if (isActive) {
-                return (
-                  <div
-                    key={slot.index}
-                    className={styles.liveSlot}
-                    style={cellStyle}
-                  >
-                    {renderSlotMedia(true)}
-                  </div>
-                );
-              }
-
-              return (
+        <div
+          className={`${styles.stripStage} ${
+            isHorizontal ? styles.stripStageHorizontal : styles.stripStageVertical
+          }${inReview ? ` ${styles.stripStageReview}` : ""}`}
+        >
+          {showCameraStage && (
+            <div
+              className={`${styles.stageMain} ${inReview ? styles.stageMainReview : ""}`}
+            >
+              {!inReview && renderStageOverlays()}
+              {!inReview && collageFlash && isMobile && (
                 <div
-                  key={slot.index}
-                  className={styles.emptySlot}
-                  style={cellStyle}
-                  aria-hidden="true"
-                />
-              );
-            })}
-          </div>
+                  className={styles.collageFlashOverlay}
+                  role="status"
+                  aria-live="polite"
+                  aria-label={t("collageStripPreview")}
+                >
+                  <div className={styles.collageFlashFrame}>
+                    {renderStripGrid("flash")}
+                  </div>
+                </div>
+              )}
+              {inReview ? (
+                <div className={styles.reviewCollageWrap}>
+                  {renderStripGrid("review")}
+                </div>
+              ) : (
+                <div className={styles.mainViewer}>
+                  {renderCameraMedia(styles.video)}
+                </div>
+              )}
+            </div>
+          )}
+          {!isMobile && !inReview && (
+            <div className={styles.stripAside}>{renderStripGrid()}</div>
+          )}
         </div>
       ) : (
         <div className={styles.viewer}>
-          {preview ? (
-            <img src={preview} alt="Preview" className={styles.preview} />
-          ) : cameraDenied ? (
-            <CameraPermissionPlaceholder
-              onRetry={() => void init("user")}
-            />
-          ) : !stream ? (
-            <div className={styles.slotLoading} aria-busy="true" />
-          ) : (
-            <video
-              ref={videoRef}
-              className={styles.video}
-              playsInline
-              muted
-              style={mediaStyle}
-            />
-          )}
+          {renderStageOverlays()}
+          {renderCameraMedia(styles.video)}
         </div>
       )}
 
@@ -273,3 +678,5 @@ export function CameraView({ onCapture, onCancel, frameOverlay }: CameraViewProp
     </div>
   );
 }
+
+

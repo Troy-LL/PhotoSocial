@@ -41,9 +41,8 @@
   outline-offset: 2px;
 }
 
-.photo {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
+/* SlotPhoto.frame is absolutely positioned inside .slot */
+.slotMedia {
+  position: absolute;
+  inset: 0;
 }

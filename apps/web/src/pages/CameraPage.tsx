@@ -1,82 +1,419 @@
-import { useEffect, useState } from "react";
+import { useMemo, useState } from "react";
+
 import { useNavigate, useParams } from "react-router-dom";
+
 import { useTranslation } from "react-i18next";
-import { motion } from "motion/react";
+
+import { motion, AnimatePresence } from "motion/react";
+
+import { createLayout } from "@photosocial/shared";
+
 import { CameraView } from "../features/camera/CameraView";
-import { StickerPanel } from "../features/stickers/StickerPanel";
+
+import { SlotActionSheet } from "../features/camera/SlotActionSheet";
+
+import { SlotFramingEditor } from "../features/camera/SlotFramingEditor";
+
+import {
+
+  DEFAULT_SLOT_PHOTO_FIT,
+
+  slotDisplayAspectRatio,
+
+  slotFitAxis,
+
+  type SlotPhotoFit,
+
+} from "../features/camera/slot-photo-fit";
+
+
 import { useSession } from "../context/SessionContext";
-import { api } from "../lib/api";
+
+import { api, photoUrl } from "../lib/api";
+
+import { Button } from "../components/Button";
+
 import styles from "./CameraPage.module.css";
 
+
+
 export function CameraPage() {
+
   const { t } = useTranslation();
+
   const { code } = useParams();
+
   const navigate = useNavigate();
+
   const { stored, state, assignedSlot, refresh } = useSession();
+
   const [uploadError, setUploadError] = useState(false);
-  const [slotNotice, setSlotNotice] = useState<number | null>(null);
 
-  useEffect(() => {
-    if (assignedSlot !== null) setSlotNotice(assignedSlot);
-  }, [assignedSlot]);
+  const [uploading, setUploading] = useState(false);
 
-  async function handleCapture(blob: Blob) {
-    if (!stored) return;
-    setUploadError(false);
-    const res = await api.uploadPhoto(stored.sessionId, stored.wsToken, blob);
-    if (!res.success) {
-      setUploadError(true);
-      return;
-    }
-    await refresh();
-    navigate(`/party/${code}/collage`);
-  }
+  const [isRetaking, setIsRetaking] = useState(false);
 
-  if (assignedSlot === null) {
-    return (
-      <p className={styles.waiting}>{t("waitingForAssignment")}</p>
-    );
-  }
+  const [autoResumeKey, setAutoResumeKey] = useState(0);
+
+  const [menuSlot, setMenuSlot] = useState<number | null>(null);
+
+  const [framingSlot, setFramingSlot] = useState<number | null>(null);
+
+  const [photoFits, setPhotoFits] = useState<Record<number, SlotPhotoFit>>({});
+
+
+
+  const isHost = stored?.isHost ?? false;
 
   const me = state?.participants.find((p) => p.id === stored?.participantId);
 
+  const hasMyPhoto = Boolean(me?.photoUrl);
+
+  const inReview = hasMyPhoto && !isRetaking;
+
+
+
+  const layout = state?.session.layout.preset
+
+    ? createLayout(state.session.layout.preset)
+
+    : null;
+
+
+
+  const slotPhotos = useMemo(() => {
+
+    if (!state) return {};
+
+    const map: Record<number, string> = {};
+
+    for (const slot of state.collage.slots) {
+
+      const src = slot.thumbnailUrl ?? slot.photoUrl;
+
+      if (src) map[slot.index] = photoUrl(src);
+
+    }
+
+    return map;
+
+  }, [state]);
+
+
+
+  async function handleCapture(blob: Blob): Promise<boolean> {
+
+    if (!stored || assignedSlot === null) return false;
+
+    setUploadError(false);
+
+    setUploading(true);
+
+    try {
+
+      const res = await api.uploadPhoto(stored.sessionId, stored.wsToken, blob);
+
+      if (!res.success) {
+
+        setUploadError(true);
+
+        return false;
+
+      }
+
+      await refresh();
+
+      setIsRetaking(false);
+
+      return false;
+
+    } finally {
+
+      setUploading(false);
+
+    }
+
+  }
+
+
+
+  async function handleRetakeFromMenu() {
+
+    if (!stored || menuSlot === null || !canRetakeSlot(menuSlot)) return;
+
+    const res = await api.clearSlotPhoto(stored.sessionId, stored.wsToken, {
+
+      slotIndex: menuSlot,
+
+    });
+
+    if (!res.success) return;
+
+    await refresh();
+
+    const { [menuSlot]: _removed, ...rest } = photoFits;
+
+    setPhotoFits(rest);
+
+    if (menuSlot === assignedSlot) {
+
+      setIsRetaking(true);
+
+      setAutoResumeKey((k) => k + 1);
+
+    }
+
+    setMenuSlot(null);
+
+  }
+
+
+
+  function handleSlotInteract(slotIndex: number) {
+
+    if (!canRetakeSlot(slotIndex)) return;
+
+    setMenuSlot(slotIndex);
+
+  }
+
+
+
+  function canRetakeSlot(slotIndex: number): boolean {
+
+    if (!state || !stored) return false;
+
+    const slot = state.collage.slots.find((s) => s.index === slotIndex);
+
+    if (!slot?.photoUrl) return false;
+
+    const assigneeId = state.session.layout.slots.find(
+
+      (s) => s.index === slotIndex
+
+    )?.assignedTo;
+
+    if (!assigneeId) return false;
+
+    return isHost || assigneeId === stored.participantId;
+
+  }
+
+
+
+  const framingSlotDef =
+
+    framingSlot !== null && layout
+
+      ? layout.slots.find((s) => s.index === framingSlot)
+
+      : undefined;
+
+
+
+  const framingImageUrl =
+
+    framingSlot !== null ? slotPhotos[framingSlot] : undefined;
+
+
+
+  if (assignedSlot === null) {
+
+    return (
+
+      <p className={styles.waiting}>{t("waitingForAssignment")}</p>
+
+    );
+
+  }
+
+
+
+  const canCapture = !hasMyPhoto || isRetaking;
+
+
+
   return (
+
     <div className={styles.page}>
-      {slotNotice !== null && (
+
+      <AnimatePresence mode="wait">
+
         <motion.div
+
+          key={inReview ? "done" : "assigned"}
+
           className={styles.notice}
+
           initial={{ opacity: 0, y: -10 }}
+
           animate={{ opacity: 1, y: 0 }}
+
+          exit={{ opacity: 0, y: -8 }}
+
         >
-          {t("slotAssigned", { slot: assignedSlot + 1 })}
+
+          {inReview
+
+            ? t("allPhotosInTapToRetake")
+
+            : t("slotAssigned", { slot: assignedSlot + 1 })}
+
         </motion.div>
-      )}
+
+      </AnimatePresence>
+
+
 
       <CameraView
+
         onCapture={handleCapture}
+
+        captureDisabled={uploading || !canCapture}
+
+        reviewMode={inReview}
+
+        autoResumeKey={autoResumeKey}
+
         frameOverlay={
-          state?.session.layout.preset != null && assignedSlot !== null
+
+          state?.session.layout.preset != null
+
             ? {
+
                 preset: state.session.layout.preset,
+
                 assignedSlot,
+
               }
+
             : undefined
+
         }
+
+        slotPhotos={slotPhotos}
+
+        slotPhotoFits={photoFits}
+
+        onSlotInteract={handleSlotInteract}
+
+        canRetakeSlot={canRetakeSlot}
+
+        doneAction={
+
+          inReview ? (
+
+            <Button
+
+              variant="secondary"
+
+              fullWidth
+
+              onClick={() => navigate(`/party/${code}/collage`)}
+
+            >
+
+              {t("viewCollage")}
+
+            </Button>
+
+          ) : undefined
+
+        }
+
       />
 
-      {me && !me.photoUrl && stored && (
-        <StickerPanel targetScope="tile" targetId={stored.participantId} />
+
+
+      {menuSlot !== null && slotPhotos[menuSlot] && (
+
+        <SlotActionSheet
+
+          slotIndex={menuSlot}
+
+          onAdjustFraming={() => {
+
+            setFramingSlot(menuSlot);
+
+            setMenuSlot(null);
+
+          }}
+
+          onRetake={() => void handleRetakeFromMenu()}
+
+          onClose={() => setMenuSlot(null)}
+
+        />
+
       )}
 
+
+
+      {framingSlot !== null &&
+
+        framingSlotDef &&
+
+        framingImageUrl && (
+
+          <SlotFramingEditor
+
+            slotIndex={framingSlot}
+
+            imageUrl={framingImageUrl}
+
+            axis={slotFitAxis(
+              framingSlotDef.rowSpan,
+              framingSlotDef.colSpan,
+              layout.orientation
+            )}
+
+            aspectRatio={slotDisplayAspectRatio(
+              framingSlotDef.colSpan,
+              framingSlotDef.rowSpan,
+              layout.cols,
+              layout.rows,
+              layout.aspectRatio
+            )}
+
+            initialFit={photoFits[framingSlot] ?? DEFAULT_SLOT_PHOTO_FIT}
+
+            onSave={(fit) => {
+
+              setPhotoFits((prev) => ({ ...prev, [framingSlot]: fit }));
+
+              setFramingSlot(null);
+
+            }}
+
+            onCancel={() => setFramingSlot(null)}
+
+          />
+
+        )}
+
+
+
       {uploadError && (
+
         <button
+
           type="button"
+
           className={styles.retry}
+
           onClick={() => setUploadError(false)}
+
         >
+
           {t("uploadFailed")}
+
         </button>
+
       )}
+
     </div>
+
   );
+
 }
+

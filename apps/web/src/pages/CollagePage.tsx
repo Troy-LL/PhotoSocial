@@ -2,7 +2,6 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useSession } from "../context/SessionContext";
 import { CollageGrid } from "../features/collage/CollageGrid";
-import { StickerPanel } from "../features/stickers/StickerPanel";
 import { api } from "../lib/api";
 import { Button } from "../components/Button";
 import styles from "./CollagePage.module.css";
@@ -43,22 +42,10 @@ export function CollagePage() {
       <CollageGrid state={state} />
 
       {isHost && !isLocked && (
-        <>
-          <StickerPanel targetScope="global" targetId={stored.sessionId} />
-          <Button fullWidth onClick={handleLock}>
-            {t("lockCollage")}
-          </Button>
-        </>
+        <Button fullWidth onClick={handleLock}>
+          {t("lockCollage")}
+        </Button>
       )}
-
-      {stored.participantId &&
-        state.participants.find((p) => p.id === stored.participantId)
-          ?.photoUrl && (
-          <StickerPanel
-            targetScope="tile"
-            targetId={stored.participantId}
-          />
-        )}
 
       {isLocked && (
         <Link to={`/party/${code}/export`}>

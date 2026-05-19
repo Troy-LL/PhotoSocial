@@ -1,5 +1,6 @@
 import {
   assignSlotSchema,
+  clearSlotPhotoSchema,
   createSessionSchema,
   emailSchema,
   joinSessionSchema,
@@ -298,6 +299,28 @@ sessionRoutes.post("/photos", async (c) => {
   });
 
   return c.json(ok({ photoUrl, thumbnailUrl }));
+});
+
+sessionRoutes.post("/clear-photo", async (c) => {
+  const auth = c.get("auth");
+  const body = await c.req.json();
+  const parsed = clearSlotPhotoSchema.safeParse(body);
+  if (!parsed.success) {
+    return c.json(err("VALIDATION_ERROR", parsed.error.message), 400);
+  }
+
+  const result = sessionService.clearSlotPhoto(
+    auth.sessionId,
+    parsed.data.slotIndex,
+    auth.participantId,
+    auth.isHost
+  );
+  if ("error" in result) {
+    return c.json(serviceError(result as { error: string }), 400);
+  }
+
+  broadcast(auth.sessionId, "PHOTO_CLEARED", result);
+  return c.json(ok(result));
 });
 
 sessionRoutes.post("/stickers", async (c) => {

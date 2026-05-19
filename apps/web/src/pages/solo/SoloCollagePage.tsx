@@ -40,7 +40,11 @@ export function SoloCollagePage() {
     const { default: html2canvas } = await import("html2canvas");
     const el = document.getElementById("collage-export");
     if (!el) return;
-    const canvas = await html2canvas(el, { scale: 2, useCORS: true });
+    const canvas = await html2canvas(el, {
+      scale: 2,
+      useCORS: true,
+      logging: false,
+    });
     const link = document.createElement("a");
     link.download = "PhotoSocial-solo.png";
     link.href = canvas.toDataURL("image/png");
@@ -56,7 +60,7 @@ export function SoloCollagePage() {
     <div className={styles.page}>
       <h1>{t("soloDone")}</h1>
 
-      <CollageGrid state={sessionState} />
+      <CollageGrid state={sessionState} slotPhotoFits={data.photoFits} />
 
       <Button fullWidth onClick={downloadCollage}>
         {t("download")}

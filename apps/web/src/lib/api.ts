@@ -81,6 +81,17 @@ export const api = {
       headers: authHeaders(token),
     }),
 
+  clearSlotPhoto: (
+    sessionId: string,
+    token: string,
+    body: { slotIndex: number }
+  ) =>
+    request(`/sessions/${sessionId}/clear-photo`, {
+      method: "POST",
+      headers: authHeaders(token),
+      body: JSON.stringify(body),
+    }),
+
   uploadPhoto: async (sessionId: string, token: string, blob: Blob) => {
     const form = new FormData();
     form.append("photo", blob, "photo.jpg");

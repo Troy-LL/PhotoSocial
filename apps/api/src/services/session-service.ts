@@ -241,6 +241,40 @@ export function unlockSlot(sessionId: string, slotIndex: number, isHost: boolean
   return { ok: true };
 }
 
+export function clearSlotPhoto(
+  sessionId: string,
+  slotIndex: number,
+  requesterParticipantId: string,
+  isHost: boolean
+) {
+  const session = store.getSession(sessionId);
+  if (!session) return { error: "SESSION_NOT_FOUND" as const };
+  if (session.status === "locked") return { error: "SESSION_LOCKED" as const };
+
+  const slot = session.layout.slots.find((s) => s.index === slotIndex);
+  if (!slot) return { error: "INVALID_SLOT" as const };
+  if (!slot.assignedTo) return { error: "NO_ASSIGNEE" as const };
+
+  const assignee = store.getParticipant(sessionId, slot.assignedTo);
+  if (!assignee) return { error: "PARTICIPANT_NOT_FOUND" as const };
+
+  const isAssignee = assignee.id === requesterParticipantId;
+  if (!isHost && !isAssignee) return { error: "FORBIDDEN" as const };
+  if (!assignee.photoUrl) return { error: "NO_PHOTO" as const };
+
+  assignee.photoUrl = null;
+  assignee.thumbnailUrl = null;
+  slot.locked = false;
+  store.updateParticipant(assignee);
+  store.setSession(session);
+  store.touchSession(sessionId);
+
+  return {
+    slotIndex,
+    participantId: assignee.id,
+  };
+}
+
 export function lockSession(sessionId: string, isHost: boolean) {
   if (!isHost) return { error: "FORBIDDEN" as const };
   const session = store.getSession(sessionId);

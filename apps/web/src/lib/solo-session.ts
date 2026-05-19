@@ -4,6 +4,7 @@ import {
   type SessionState,
   type ThemeKey,
 } from "@photosocial/shared";
+import type { SlotPhotoFit } from "../features/camera/slot-photo-fit";
 
 const STORAGE_KEY = "photosocial-solo";
 
@@ -16,6 +17,7 @@ export interface SoloSessionPrefs {
 export interface SoloSessionData extends SoloSessionPrefs {
   /** Object URLs for each filled slot index (in-memory only) */
   photos: Record<number, string>;
+  photoFits: Record<number, SlotPhotoFit>;
 }
 
 export function loadSoloPrefs(): SoloSessionPrefs | null {

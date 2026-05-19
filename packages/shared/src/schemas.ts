@@ -39,6 +39,10 @@ export const assignSlotSchema = z.object({
   slotIndex: z.number().int().min(0),
 });
 
+export const clearSlotPhotoSchema = z.object({
+  slotIndex: z.number().int().min(0),
+});
+
 export const placeStickerSchema = z.object({
   stickerKey: z.string(),
   packId: z.string(),
