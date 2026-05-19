@@ -20,23 +20,38 @@ import {
   createRoomState,
   joinParticipant,
   lockSession,
-  normalizeRoomState,
   setTheme,
   submitPhoto,
   toSessionState,
   type RoomState,
 } from "./lib/session-state.js";
-
-const STATE_KEY = "state";
+import {
+  clearAllSlotPhotos,
+  deleteSlotPhoto,
+  loadRoomState,
+  saveRoomState,
+} from "./lib/room-storage.js";
 
 async function loadState(room: Party.Room): Promise<RoomState | null> {
-  const state = await room.storage.get<RoomState>(STATE_KEY);
-  if (!state) return null;
-  return normalizeRoomState(state);
+  return loadRoomState(room);
 }
 
 async function saveState(room: Party.Room, state: RoomState): Promise<void> {
-  await room.storage.put(STATE_KEY, state);
+  await saveRoomState(room, state);
+}
+
+function storageErrorResponse(error: unknown): Response | null {
+  if (error instanceof Error && error.message === "PHOTO_TOO_LARGE") {
+    return jsonResponse(
+      err(
+        "PHOTO_TOO_LARGE",
+        "Photo is too large. Try again or retake closer to the camera."
+      ),
+      413
+    );
+  }
+  console.error("[session-party] storage error", error);
+  return jsonResponse(err("INTERNAL_ERROR", "Could not save photo"), 500);
 }
 
 async function authFromRequest(
@@ -127,7 +142,13 @@ export default class SessionParty implements Party.Server {
         if ("error" in result) {
           return jsonResponse(err(result.error, result.error), 400);
         }
-        await saveState(this.room, state);
+        try {
+          await saveState(this.room, state);
+        } catch (e) {
+          const res = storageErrorResponse(e);
+          if (res) return res;
+          throw e;
+        }
         broadcast(this.room, this.room.id, "SLOT_ASSIGNED", result);
         return jsonResponse(ok(result));
       }
@@ -153,7 +174,14 @@ export default class SessionParty implements Party.Server {
           return jsonResponse(err("FORBIDDEN", "FORBIDDEN"), 400);
         }
         lockSession(state);
-        await saveState(this.room, state);
+        await clearAllSlotPhotos(this.room, state);
+        try {
+          await saveState(this.room, state);
+        } catch (e) {
+          const res = storageErrorResponse(e);
+          if (res) return res;
+          throw e;
+        }
         const finalCollageUrl = "";
         broadcast(this.room, this.room.id, "SESSION_LOCKED", {
           finalCollageUrl,
@@ -177,7 +205,13 @@ export default class SessionParty implements Party.Server {
         if ("error" in result) {
           return jsonResponse(err(result.error, result.error), 400);
         }
-        await saveState(this.room, state);
+        try {
+          await saveState(this.room, state);
+        } catch (e) {
+          const res = storageErrorResponse(e);
+          if (res) return res;
+          throw e;
+        }
         broadcast(this.room, this.room.id, "PHOTO_SUBMITTED", result);
         return jsonResponse(ok({ photoUrl: result.photoUrl, thumbnailUrl: result.thumbnailUrl }));
       }
@@ -195,7 +229,14 @@ export default class SessionParty implements Party.Server {
         if ("error" in result) {
           return jsonResponse(err(result.error, result.error), 400);
         }
-        await saveState(this.room, state);
+        await deleteSlotPhoto(this.room, parsed.data.slotIndex);
+        try {
+          await saveState(this.room, state);
+        } catch (e) {
+          const res = storageErrorResponse(e);
+          if (res) return res;
+          throw e;
+        }
         broadcast(this.room, this.room.id, "PHOTO_CLEARED", result);
         return jsonResponse(ok(result));
       }

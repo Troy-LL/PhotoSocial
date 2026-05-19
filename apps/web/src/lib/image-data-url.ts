@@ -19,3 +19,22 @@ export async function blobToJpegDataUrl(
 
   return canvas.toDataURL("image/jpeg", quality);
 }
+
+/** Target under PartyKit's ~128 KiB per storage key (JSON with full + thumb). */
+const MAX_DATA_URL_CHARS = 55_000;
+
+export async function blobToJpegDataUrlCompact(
+  blob: Blob,
+  maxSize: number,
+  maxChars = MAX_DATA_URL_CHARS
+): Promise<string> {
+  let size = maxSize;
+  let quality = 0.72;
+  for (let attempt = 0; attempt < 6; attempt++) {
+    const url = await blobToJpegDataUrl(blob, size, quality);
+    if (url.length <= maxChars) return url;
+    quality = Math.max(0.45, quality - 0.08);
+    size = Math.round(size * 0.85);
+  }
+  return blobToJpegDataUrl(blob, Math.round(maxSize * 0.6), 0.45);
+}

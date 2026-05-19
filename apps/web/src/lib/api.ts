@@ -1,6 +1,6 @@
 import type { ApiResponse } from "@photosocial/shared";
 import { partykitHttpOrigin } from "./deploy-config.js";
-import { blobToJpegDataUrl } from "./image-data-url.js";
+import { blobToJpegDataUrlCompact } from "./image-data-url.js";
 
 async function request<T>(
   path: string,
@@ -107,10 +107,9 @@ export const api = {
     blob: Blob,
     slotIndex: number
   ) => {
-    // Keep JSON body small — large uploads get 400 at the edge without CORS headers.
     const [photoDataUrl, thumbDataUrl] = await Promise.all([
-      blobToJpegDataUrl(blob, 900, 0.72),
-      blobToJpegDataUrl(blob, 360, 0.7),
+      blobToJpegDataUrlCompact(blob, 720, 90_000),
+      blobToJpegDataUrlCompact(blob, 280, 28_000),
     ]);
     return request<{ photoUrl: string; thumbnailUrl: string }>(
       `/parties/main/${sessionId}`,
