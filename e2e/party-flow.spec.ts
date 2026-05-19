@@ -4,15 +4,15 @@ test.describe("PhotoSocial party flow", () => {
   test("landing page loads", async ({ page }) => {
     await page.goto("/");
     await expect(page.getByRole("heading", { name: "PhotoSocial" })).toBeVisible();
-    await expect(page.getByRole("link", { name: "Create Party" })).toBeVisible();
-    await expect(page.getByRole("link", { name: "Join Party" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Create Booth" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Join Booth" })).toBeVisible();
   });
 
   test("host creates party and sees lobby", async ({ page }) => {
     await page.goto("/create");
     await page.getByPlaceholder("Maya").fill("Host Alex");
     await page.getByRole("button", { name: "4-Up", exact: true }).click();
-    await page.getByRole("button", { name: "Create Party" }).click();
+    await page.getByRole("button", { name: "Create Booth" }).click();
 
     await expect(page).toHaveURL(/\/party\/[A-Z]+-\d{4}\/lobby/);
     await expect(page.getByText(/[A-Z]+-\d{4}/)).toBeVisible();
@@ -37,7 +37,7 @@ test.describe("PhotoSocial party flow", () => {
     await hostPage.goto("/create");
     await hostPage.getByPlaceholder("Maya").fill("Host");
     await hostPage.getByRole("button", { name: "3-Up Center Wide", exact: true }).click();
-    await hostPage.getByRole("button", { name: "Create Party", exact: true }).click();
+    await hostPage.getByRole("button", { name: "Create Booth", exact: true }).click();
     await hostPage.waitForURL(/\/lobby/);
 
     const codeText = await hostPage.locator('[class*="code"]').first().textContent();
