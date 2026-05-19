@@ -204,6 +204,7 @@ export default class RegistryParty implements Party.Server {
         sessionId,
         participantId: actualParticipantId,
         wsToken,
+        isHost,
         sessionMeta: data.sessionMeta,
       })
     );

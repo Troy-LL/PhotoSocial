@@ -48,6 +48,7 @@ export const api = {
       sessionId: string;
       participantId: string;
       wsToken: string;
+      isHost: boolean;
       sessionMeta: unknown;
     }>("/parties/registry/main", {
       method: "POST",

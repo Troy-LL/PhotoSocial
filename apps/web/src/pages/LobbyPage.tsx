@@ -17,10 +17,8 @@ import styles from "./LobbyPage.module.css";
 export function LobbyPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { stored, state, loading, assignedSlots, sessionError, refresh } =
+  const { stored, state, loading, isHost, assignedSlots, sessionError, refresh } =
     useSession();
-
-  const isHost = stored?.isHost ?? false;
   const code = stored?.partyCode ?? "";
   const progress = useMyPhotoProgress(state, stored?.participantId);
 
@@ -163,10 +161,12 @@ export function LobbyPage() {
               state.collage.slots,
               p.id
             );
+            const isYou = p.id === stored?.participantId;
             return (
               <li key={p.id}>
                 {p.displayName}
-                {p.id === state.session.hostId && " (host)"}
+                {isYou && ` (${t("you")})`}
+                {p.id === state.session.hostId && ` (${t("host")})`}
                 {slots.length > 0 &&
                   ` · ${t("participantSlots", { slots: formatSlotNumbers(slots) })}`}
                 {total > 0 && filled >= total && " · Photo in"}

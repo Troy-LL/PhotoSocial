@@ -31,7 +31,7 @@ export function CameraPage() {
   const { t } = useTranslation();
   const { code } = useParams();
   const navigate = useNavigate();
-  const { stored, state, assignedSlots, refresh } = useSession();
+  const { stored, state, isHost, assignedSlots, refresh } = useSession();
   const [uploadError, setUploadError] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [isRetaking, setIsRetaking] = useState(false);
@@ -41,7 +41,6 @@ export function CameraPage() {
   const [photoFits, setPhotoFits] = useState<Record<number, SlotPhotoFit>>({});
   const [focusSlot, setFocusSlot] = useState<number | null>(null);
 
-  const isHost = stored?.isHost ?? false;
   const progress = useMyPhotoProgress(state, stored?.participantId);
   const inReview = progress.allFilled && !isRetaking;
 

@@ -1,4 +1,5 @@
-import { lazy, Suspense } from "react";
+import { Suspense } from "react";
+import { lazyRetry } from "./lib/lazy-retry";
 import { BrowserRouter, Routes, Route, Navigate, Outlet, useParams } from "react-router-dom";
 import { Layout } from "./components/Layout";
 import { SessionProvider, useSession } from "./context/SessionContext";
@@ -8,28 +9,28 @@ import { JoinPage } from "./pages/JoinPage";
 import { getStoredSession } from "./lib/session-storage";
 import { SoloProvider } from "./context/SoloContext";
 
-const LobbyPage = lazy(() =>
+const LobbyPage = lazyRetry(() =>
   import("./pages/LobbyPage").then((m) => ({ default: m.LobbyPage }))
 );
-const AssignPage = lazy(() =>
+const AssignPage = lazyRetry(() =>
   import("./pages/AssignPage").then((m) => ({ default: m.AssignPage }))
 );
-const CameraPage = lazy(() =>
+const CameraPage = lazyRetry(() =>
   import("./pages/CameraPage").then((m) => ({ default: m.CameraPage }))
 );
-const CollagePage = lazy(() =>
+const CollagePage = lazyRetry(() =>
   import("./pages/CollagePage").then((m) => ({ default: m.CollagePage }))
 );
-const ExportPage = lazy(() =>
+const ExportPage = lazyRetry(() =>
   import("./pages/ExportPage").then((m) => ({ default: m.ExportPage }))
 );
-const SoloSetupPage = lazy(() =>
+const SoloSetupPage = lazyRetry(() =>
   import("./pages/solo/SoloSetupPage").then((m) => ({ default: m.SoloSetupPage }))
 );
-const SoloCameraPage = lazy(() =>
+const SoloCameraPage = lazyRetry(() =>
   import("./pages/solo/SoloCameraPage").then((m) => ({ default: m.SoloCameraPage }))
 );
-const SoloCollagePage = lazy(() =>
+const SoloCollagePage = lazyRetry(() =>
   import("./pages/solo/SoloCollagePage").then((m) => ({ default: m.SoloCollagePage }))
 );
 

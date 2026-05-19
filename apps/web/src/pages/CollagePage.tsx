@@ -10,7 +10,7 @@ export function CollagePage() {
   const { t } = useTranslation();
   const { code } = useParams();
   const navigate = useNavigate();
-  const { stored, state, loading, refresh } = useSession();
+  const { stored, state, loading, isHost, refresh } = useSession();
 
   if (loading || !state || !stored) {
     return <p>Loading…</p>;
@@ -19,7 +19,6 @@ export function CollagePage() {
   const filled = state.collage.slots.filter((s) => s.photoUrl).length;
   const total = state.collage.slots.length;
   const allIn = filled === total;
-  const isHost = stored.isHost;
   const isLocked = state.session.status === "locked";
 
   async function handleLock() {

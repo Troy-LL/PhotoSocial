@@ -49,7 +49,7 @@ export function SlotAssignment() {
   const { t } = useTranslation();
   const { code } = useParams();
   const navigate = useNavigate();
-  const { stored, state, refresh } = useSession();
+  const { stored, state, isHost, refresh } = useSession();
   const [selectedParticipant, setSelectedParticipant] = useState<string | null>(
     null
   );
@@ -57,7 +57,6 @@ export function SlotAssignment() {
 
   if (!stored || !state) return null;
 
-  const isHost = stored.isHost;
   const hostSlots = slotsForParticipant(
     state.session.layout,
     stored.participantId

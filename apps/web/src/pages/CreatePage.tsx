@@ -9,8 +9,7 @@ import {
   type ThemeKey,
 } from "@photosocial/shared";
 import { api } from "../lib/api";
-import { getDeviceId } from "../lib/device-id";
-import { saveSession } from "../lib/session-storage";
+import { newPartyDeviceId, saveSession } from "../lib/session-storage";
 import { LayoutThumbnail } from "../features/collage/LayoutThumbnail";
 import { ThemePicker } from "../features/themes/ThemePicker";
 import {
@@ -83,8 +82,9 @@ export function CreatePage() {
       customHue: theme === "custom" ? customHue : undefined,
     });
 
+    const deviceId = newPartyDeviceId();
     const res = await api.createSession({
-      hostDeviceId: getDeviceId(),
+      hostDeviceId: deviceId,
       hostName: hostName.trim(),
       layout,
       theme,
@@ -102,6 +102,7 @@ export function CreatePage() {
       partyCode: res.data.partyCode,
       participantId: res.data.participantId,
       wsToken: res.data.wsToken,
+      deviceId,
       isHost: true,
       displayName: hostName.trim(),
     });

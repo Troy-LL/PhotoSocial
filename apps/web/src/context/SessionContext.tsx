@@ -27,6 +27,8 @@ interface SessionContextValue {
   state: SessionState | null;
   loading: boolean;
   reconnecting: boolean;
+  /** From server: session.hostId === your participantId */
+  isHost: boolean;
   /** Slot indices assigned to the current participant */
   assignedSlots: number[];
   sessionError: string | null;
@@ -84,6 +86,12 @@ export function SessionProvider({
         setState(res.data);
         setSessionError(null);
         setAssignedSlots(deriveAssignedSlots(res.data, s.participantId));
+        const serverIsHost = res.data.session.hostId === s.participantId;
+        if (serverIsHost !== s.isHost) {
+          const updated = { ...s, isHost: serverIsHost };
+          saveSession(updated);
+          setStoredState(updated);
+        }
       } else {
         const code = res.error.code;
         if (code === "SESSION_NOT_FOUND" || code === "UNAUTHORIZED") {
@@ -157,12 +165,17 @@ export function SessionProvider({
     }
   }, [state?.session.theme, state?.session.customHue, applyTheme]);
 
+  const isHost = Boolean(
+    state && stored && state.session.hostId === stored.participantId
+  );
+
   const value = useMemo(
     () => ({
       stored,
       state,
       loading,
       reconnecting,
+      isHost,
       assignedSlots,
       sessionError,
       refresh,
@@ -174,6 +187,7 @@ export function SessionProvider({
       state,
       loading,
       reconnecting,
+      isHost,
       assignedSlots,
       sessionError,
       refresh,

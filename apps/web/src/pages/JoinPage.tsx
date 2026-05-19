@@ -2,8 +2,11 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { api } from "../lib/api";
-import { getDeviceId } from "../lib/device-id";
-import { saveSession } from "../lib/session-storage";
+import {
+  getStoredSession,
+  newPartyDeviceId,
+  saveSession,
+} from "../lib/session-storage";
 import { Button } from "../components/Button";
 import styles from "./JoinPage.module.css";
 
@@ -32,10 +35,15 @@ export function JoinPage() {
 
     setLoading(true);
     setError("");
+
+    const prior = getStoredSession();
+    const deviceId =
+      prior?.partyCode === partyCode ? prior.deviceId : newPartyDeviceId();
+
     const res = await api.joinSession({
       partyCode,
       displayName: displayName.trim(),
-      deviceId: getDeviceId(),
+      deviceId,
     });
     setLoading(false);
 
@@ -51,7 +59,8 @@ export function JoinPage() {
       partyCode,
       participantId: res.data.participantId,
       wsToken: res.data.wsToken,
-      isHost: false,
+      deviceId,
+      isHost: res.data.isHost,
       displayName: displayName.trim(),
     });
 
