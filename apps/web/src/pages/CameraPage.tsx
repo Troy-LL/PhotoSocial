@@ -353,7 +353,9 @@ export function CameraPage() {
 
         framingSlotDef &&
 
-        framingImageUrl && (
+        framingImageUrl &&
+
+        layout && (
 
           <SlotFramingEditor
 

@@ -269,10 +269,6 @@ export function CameraView({
     setPreviewBlob(blob);
   };
 
-  async function doCapture() {
-    await doCaptureRef.current();
-  }
-
   function handleShutter() {
     if (
       (useContinuous ? capturing || isCountingDown || collageFlash : preview) ||
