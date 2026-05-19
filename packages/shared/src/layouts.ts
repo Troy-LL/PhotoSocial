@@ -42,6 +42,8 @@ function withAssignment(slots: SlotTemplate[]): SlotDefinition[] {
     ...s,
     assignedTo: null,
     locked: false,
+    photoUrl: null,
+    thumbnailUrl: null,
   }));
 }
 

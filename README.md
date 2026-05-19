@@ -1,12 +1,22 @@
 # PhotoSocial
 
-Remote-friendly, pass-and-shoot photobooth collage web app.
+Remote-friendly photobooth collage app — everyone shoots on their own phone, one shared strip.
 
-**Tagline:** Everyone's camera. One shared memory.
+**Live app:** [https://photosocially.vercel.app](https://photosocially.vercel.app)
+
+## Stack
+
+| Package | Role |
+|---------|------|
+| [`apps/web`](apps/web) | React PWA (Vite) |
+| [`apps/party`](apps/party) | PartyKit — sessions, photos, realtime |
+| [`packages/shared`](packages/shared) | Types, Zod schemas, layouts, themes |
+
+No separate Node API. Party mode talks to PartyKit over HTTPS + WebSocket.
 
 ## Quick start
 
-Requires Node 20+ and [pnpm](https://pnpm.io).
+Requires **Node 20+** and [pnpm](https://pnpm.io).
 
 ```bash
 pnpm install
@@ -14,45 +24,63 @@ pnpm --filter @photosocial/shared build
 pnpm dev
 ```
 
-- Web: http://localhost:5173
-- PartyKit: http://127.0.0.1:1999 (party API + realtime)
+| Service | URL |
+|---------|-----|
+| Web | http://localhost:5173 |
+| PartyKit | http://127.0.0.1:1999 |
 
-Copy `apps/party/.env.example` to `apps/party/.env` for `JWT_SECRET` and `PARTYKIT_BROADCAST_SECRET`.
-
-## Monorepo
-
-| Package | Description |
-|---------|-------------|
-| `apps/web` | Vite + React PWA |
-| `apps/party` | PartyKit backend (sessions, photos, live updates) |
-| `packages/shared` | Types, Zod schemas, themes, layouts |
+```bash
+cd apps/party
+cp .env.example .env   # JWT_SECRET, PARTYKIT_BROADCAST_SECRET
+```
 
 ## Scripts
 
 ```bash
 pnpm dev          # Web + PartyKit
 pnpm build        # Build all packages
-pnpm typecheck    # Typecheck all packages
-pnpm test:e2e     # Playwright E2E
+pnpm typecheck    # Typecheck
+pnpm test:e2e     # Playwright
 ```
-
-## Privacy
-
-Party photos live in PartyKit room storage during the session. On lock, slot images are cleared from state; users download the collage on their device. Export is download-only (no email).
 
 ## Deploy
 
-| Piece | Where |
-|-------|--------|
-| **Web** | Vercel — see root `vercel.json`, no dashboard env vars |
-| **PartyKit** | `pnpm --filter @photosocial/party deploy` |
+### 1. PartyKit
 
-**Full PartyKit guide:** [docs/PARTYKIT.md](docs/PARTYKIT.md)
+```bash
+pnpm --filter @photosocial/party deploy
+```
 
-1. Deploy PartyKit → copy host (e.g. `photosocial-party.you.partykit.dev`)
-2. Set `partykitHost` in [config/deploy.production.json](config/deploy.production.json)
-3. Deploy Vercel
+Set secrets in the [PartyKit dashboard](https://www.partykit.io/) (same as `apps/party/.env`).
+
+Copy the deploy host (e.g. `photosocial-party.yourname.partykit.dev`).
+
+### 2. Web (Vercel)
+
+Edit [`config/deploy.production.json`](config/deploy.production.json):
+
+```json
+{
+  "partykitHost": "photosocial-party.yourname.partykit.dev"
+}
+```
+
+Push to Git — Vercel uses root [`vercel.json`](vercel.json). **No env vars** needed in the Vercel dashboard.
+
+Turn off **Deployment Protection → Require Log In** for public access (or only protect previews).
+
+See [docs/PARTYKIT.md](docs/PARTYKIT.md) for details.
+
+## Privacy
+
+- Party photos live in PartyKit room storage during the session.
+- On lock, per-slot images are cleared from room state.
+- Export is **download only** (no email).
+- Solo mode stays entirely in the browser (`localStorage`).
 
 ## Docs
 
-See [docs/SPEC.md](docs/SPEC.md), [docs/FUNCTION.md](docs/FUNCTION.md), [docs/PARTYKIT.md](docs/PARTYKIT.md), and [docs/DESIGN_PHILOSOPHY.md](docs/DESIGN_PHILOSOPHY.md).
+- [docs/PARTYKIT.md](docs/PARTYKIT.md) — deploy & API host
+- [docs/SPEC.md](docs/SPEC.md) — product spec
+- [docs/FUNCTION.md](docs/FUNCTION.md) — technical reference
+- [docs/DESIGN_PHILOSOPHY.md](docs/DESIGN_PHILOSOPHY.md) — UI principles

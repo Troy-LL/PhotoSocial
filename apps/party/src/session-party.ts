@@ -4,8 +4,10 @@ import {
   assignSlotSchema,
   clearSlotPhotoSchema,
   setThemeSchema,
+  submitPhotoSchema,
 } from "@photosocial/shared";
 import { err, jsonResponse, ok } from "./lib/api-response.js";
+import { withCorsHandler } from "./lib/cors.js";
 import { broadcast } from "./lib/broadcast.js";
 import {
   signWsToken,
@@ -18,6 +20,7 @@ import {
   createRoomState,
   joinParticipant,
   lockSession,
+  normalizeRoomState,
   setTheme,
   submitPhoto,
   toSessionState,
@@ -28,7 +31,8 @@ const STATE_KEY = "state";
 
 async function loadState(room: Party.Room): Promise<RoomState | null> {
   const state = await room.storage.get<RoomState>(STATE_KEY);
-  return state ?? null;
+  if (!state) return null;
+  return normalizeRoomState(state);
 }
 
 async function saveState(room: Party.Room, state: RoomState): Promise<void> {
@@ -68,44 +72,45 @@ export default class SessionParty implements Party.Server {
     /* clients receive broadcasts only */
   }
 
-  async onRequest(req: Party.Request) {
-    if (req.method === "GET") {
-      return this.handleGet(req);
-    }
-    if (req.method !== "POST") {
-      return new Response("Method not allowed", { status: 405 });
-    }
+  onRequest(req: Party.Request) {
+    return withCorsHandler(req, async (request) => {
+      if (request.method === "GET") {
+        return this.handleGet(request);
+      }
+      if (request.method !== "POST") {
+        return new Response("Method not allowed", { status: 405 });
+      }
 
-    let body: Record<string, unknown>;
-    try {
-      body = (await req.json()) as Record<string, unknown>;
-    } catch {
-      return jsonResponse(err("VALIDATION_ERROR", "Invalid JSON"), 400);
-    }
+      let body: Record<string, unknown>;
+      try {
+        body = (await request.json()) as Record<string, unknown>;
+      } catch {
+        return jsonResponse(err("VALIDATION_ERROR", "Invalid JSON"), 400);
+      }
 
-    const action = body.action as string;
+      const action = body.action as string;
 
-    if (action === "init") {
-      return this.handleInit(body);
-    }
-    if (action === "join") {
-      return this.handleJoin(body);
-    }
-    if (action === "broadcast") {
-      return this.handleInternalBroadcast(body);
-    }
+      if (action === "init") {
+        return this.handleInit(body);
+      }
+      if (action === "join") {
+        return this.handleJoin(body);
+      }
+      if (action === "broadcast") {
+        return this.handleInternalBroadcast(body);
+      }
 
-    const auth = await authFromRequest(req, this.room.id);
-    if (!auth) {
-      return jsonResponse(err("UNAUTHORIZED", "Invalid token"), 401);
-    }
+      const auth = await authFromRequest(request, this.room.id);
+      if (!auth) {
+        return jsonResponse(err("UNAUTHORIZED", "Invalid token"), 401);
+      }
 
-    const state = await loadState(this.room);
-    if (!state) {
-      return jsonResponse(err("SESSION_NOT_FOUND", "Not found"), 404);
-    }
+      const state = await loadState(this.room);
+      if (!state) {
+        return jsonResponse(err("SESSION_NOT_FOUND", "Not found"), 404);
+      }
 
-    switch (action) {
+      switch (action) {
       case "assign-slot": {
         if (!auth.isHost) {
           return jsonResponse(err("FORBIDDEN", "FORBIDDEN"), 400);
@@ -158,12 +163,14 @@ export default class SessionParty implements Party.Server {
       case "photos": {
         const photoDataUrl = body.photoDataUrl as string | undefined;
         const thumbDataUrl = body.thumbDataUrl as string | undefined;
-        if (!photoDataUrl || !thumbDataUrl) {
+        const parsed = submitPhotoSchema.safeParse(body);
+        if (!parsed.success || !photoDataUrl || !thumbDataUrl) {
           return jsonResponse(err("VALIDATION_ERROR", "Photo required"), 400);
         }
         const result = submitPhoto(
           state,
           auth.participantId,
+          parsed.data.slotIndex,
           photoDataUrl,
           thumbDataUrl
         );
@@ -195,6 +202,7 @@ export default class SessionParty implements Party.Server {
       default:
         return jsonResponse(err("VALIDATION_ERROR", "Unknown action"), 400);
     }
+    });
   }
 
   private async handleGet(req: Party.Request) {

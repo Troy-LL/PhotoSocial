@@ -8,7 +8,11 @@ import {
   type ReactNode,
 } from "react";
 import type { SessionState, ThemeKey, WsEnvelope } from "@photosocial/shared";
-import { resolveThemeTokens } from "@photosocial/shared";
+import {
+  participantPhotoProgress,
+  resolveThemeTokens,
+  slotsForParticipant,
+} from "@photosocial/shared";
 import { api } from "../lib/api";
 import {
   clearSession,
@@ -23,7 +27,8 @@ interface SessionContextValue {
   state: SessionState | null;
   loading: boolean;
   reconnecting: boolean;
-  assignedSlot: number | null;
+  /** Slot indices assigned to the current participant */
+  assignedSlots: number[];
   sessionError: string | null;
   refresh: () => Promise<void>;
   setStored: (s: StoredSession) => void;
@@ -31,6 +36,14 @@ interface SessionContextValue {
 }
 
 const SessionContext = createContext<SessionContextValue | null>(null);
+
+function deriveAssignedSlots(
+  data: SessionState | null,
+  participantId: string | undefined
+): number[] {
+  if (!data || !participantId) return [];
+  return slotsForParticipant(data.session.layout, participantId);
+}
 
 export function SessionProvider({
   children,
@@ -45,7 +58,7 @@ export function SessionProvider({
   const [state, setState] = useState<SessionState | null>(null);
   const [loading, setLoading] = useState(true);
   const [reconnecting, setReconnecting] = useState(false);
-  const [assignedSlot, setAssignedSlot] = useState<number | null>(null);
+  const [assignedSlots, setAssignedSlots] = useState<number[]>([]);
   const [sessionError, setSessionError] = useState<string | null>(null);
 
   const setStored = useCallback((s: StoredSession) => {
@@ -70,8 +83,7 @@ export function SessionProvider({
       if (res.success) {
         setState(res.data);
         setSessionError(null);
-        const me = res.data.participants.find((p) => p.id === s.participantId);
-        setAssignedSlot(me?.assignedSlot ?? null);
+        setAssignedSlots(deriveAssignedSlots(res.data, s.participantId));
       } else {
         const code = res.error.code;
         if (code === "SESSION_NOT_FOUND" || code === "UNAUTHORIZED") {
@@ -83,7 +95,7 @@ export function SessionProvider({
       }
     } catch {
       setSessionError(
-        "Could not reach the party server. Start the API (pnpm dev from project root) and refresh."
+        "Could not reach the party server. Start PartyKit (pnpm dev) and refresh."
       );
     } finally {
       setLoading(false);
@@ -108,23 +120,10 @@ export function SessionProvider({
       if (envelope.sessionId !== s.sessionId) return;
 
       switch (envelope.type) {
-        case "SLOT_ASSIGNED": {
-          const p = envelope.payload as {
-            participantId: string;
-            slotIndex: number;
-          };
-          if (p.participantId === s.participantId) {
-            setAssignedSlot(p.slotIndex);
-          }
-          void refresh();
-          break;
-        }
+        case "SLOT_ASSIGNED":
         case "PARTICIPANT_JOINED":
         case "PHOTO_SUBMITTED":
         case "PHOTO_CLEARED":
-        case "STICKER_PLACED":
-        case "STICKER_UPDATED":
-        case "STICKER_DELETED":
         case "THEME_CHANGED":
         case "SESSION_LOCKED":
         case "SESSION_EXPIRED":
@@ -164,7 +163,7 @@ export function SessionProvider({
       state,
       loading,
       reconnecting,
-      assignedSlot,
+      assignedSlots,
       sessionError,
       refresh,
       setStored,
@@ -175,7 +174,7 @@ export function SessionProvider({
       state,
       loading,
       reconnecting,
-      assignedSlot,
+      assignedSlots,
       sessionError,
       refresh,
       setStored,
@@ -192,4 +191,21 @@ export function useSession() {
   const ctx = useContext(SessionContext);
   if (!ctx) throw new Error("useSession requires SessionProvider");
   return ctx;
+}
+
+export function useMyPhotoProgress(state: SessionState | null, participantId: string | undefined) {
+  if (!state || !participantId) {
+    return { filled: 0, total: 0, allFilled: false, hasAnySlot: false };
+  }
+  const { filled, total } = participantPhotoProgress(
+    state.session.layout,
+    state.collage.slots,
+    participantId
+  );
+  return {
+    filled,
+    total,
+    allFilled: total > 0 && filled >= total,
+    hasAnySlot: total > 0,
+  };
 }

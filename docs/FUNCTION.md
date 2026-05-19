@@ -10,26 +10,18 @@
 ┌─────────────────────────────────────────────────────────┐
 │                     CLIENT (Browser)                    │
 │  React / Vanilla JS PWA                                 │
-│  ┌──────────┐  ┌───────────┐  ┌──────────────────────┐ │
-│  │  Camera  │  │  Collage  │  │  Sticker / Theme UI  │ │
-│  │  Module  │  │  Renderer │  │  Panel               │ │
-│  └────┬─────┘  └─────┬─────┘  └──────────┬───────────┘ │
-│       └──────────────┼───────────────────┘             │
-│         PartySocket (PartyKit room per session)         │
-└──────────────────────┬──────────────────────────────────┘
-                       │ WSS + REST
-┌──────────────────────▼──────────────────────────────────┐
-│     API (Hono)                    PartyKit (rooms)      │
-│  ┌─────────────┐  ┌──────────────┐  ┌────────────────┐ │
-│  │  Session    │  │  Party       │  │  Image Upload  │ │
-│  │  Manager   │  │  broadcast   │  │  Service       │ │
-│  └─────────────┘  └──────────────┘  └────────────────┘ │
+│  ┌──────────┐  ┌───────────┐  ┌──────────────┐         │
+│  │  Camera  │  │  Collage  │  │  Theme UI    │         │
+│  └────┬─────┘  └─────┬─────┘  └──────┬───────┘         │
+│       └──────────────┼───────────────┘                 │
+│         PartySocket + HTTPS → PartyKit                 │
 └──────────────────────┬──────────────────────────────────┘
                        │
-        ┌──────────────┴──────────────┐
-        │  Storage: DB + Object Store │
-        │  (e.g. Postgres + S3/R2)    │
-        └─────────────────────────────┘
+┌──────────────────────▼──────────────────────────────────┐
+│  PartyKit (`apps/party`)                                │
+│  registry party — create / join by party code           │
+│  session party — state, photos (data URLs), broadcasts    │
+└─────────────────────────────────────────────────────────┘
 ```
 
 ---
@@ -125,21 +117,18 @@ Host finalizes the collage. No further photo submissions accepted.
 
 **Behavior:**
 - Updates session status to `"locked"`
-- Renders `final-collage.jpg` on the API server (short-lived, default 1h TTL for download)
-- Deletes individual slot photo files and clears participant `photoUrl` / `thumbnailUrl`
-- Sets `finalCollageExpiresAt`; scheduler removes the final file after TTL
+- Clears per-slot photo data from PartyKit room state (ephemeral)
 - Broadcasts `SESSION_LOCKED` via PartyKit to all participants
-- Returns `finalCollageUrl: string` — API path to the final JPEG (until TTL purge)
+- Returns `finalCollageUrl: ""` — collage download is rendered on the client (`html2canvas`)
 
 ---
 
 ### `expireSession(sessionId)`
-Internal function triggered by scheduler.
+Marks a session as no longer joinable (party code lookup fails).
 
 **Behavior:**
-- Sets status `"expired"`
-- Schedules deletion of associated images and sticker data after 24h grace period
-- Broadcasts `SESSION_EXPIRED` to any connected clients
+- Sets status `"expired"` when TTL / inactivity rules apply
+- Room state is discarded when the PartyKit room is evicted
 
 ---
 
@@ -314,81 +303,13 @@ Exports a single collage tile as an image.
 
 **Behavior:**
 - Crops and composites only the target slot + its stickers
-- Returns `Blob` for download or email attachment
+- Returns `Blob` for download
 
 ---
 
-## 5. Sticker Functions
+## 5. Stickers
 
-### `loadStickerPack(packId)`
-Fetches sticker assets for a given pack.
-
-**Input:**
-```ts
-packId: "celebration" | "love" | "nature" | "retro" | "text" | "seasonal"
-```
-
-**Output:**
-```ts
-{
-  packId: string,
-  stickers: StickerAsset[],   // { key, svgUrl, label }
-}
-```
-
-**Behavior:**
-- SVGs fetched from CDN with aggressive cache headers
-- Seasonal pack auto-loaded based on `Date.now()` month
-
----
-
-### `placeSticker(stickerKey, targetScope, targetId)`
-Places a sticker on a tile or the global canvas.
-
-**Input:**
-```ts
-{
-  stickerKey: string,
-  targetScope: "tile" | "global",
-  targetId: string,           // participantId for tile, sessionId for global
-  initialPosition: { x: number, y: number },  // % of target dimensions
-}
-```
-
-**Behavior:**
-- Creates `Sticker` record with default `scale: 1`, `rotation: 0`
-- Persists to server; server broadcasts `STICKER_PLACED` event to session
-- Optimistically renders on client before server confirmation
-
----
-
-### `updateSticker(stickerId, transform)`
-Updates position, scale, or rotation of an existing sticker.
-
-**Input:**
-```ts
-{
-  stickerId: string,
-  x?: number,
-  y?: number,
-  scale?: number,
-  rotation?: number,
-}
-```
-
-**Behavior:**
-- Throttled to `60fps` during active drag/pinch
-- Debounced server sync at `200ms` after gesture ends
-- Broadcasts `STICKER_UPDATED` to session on server sync
-
----
-
-### `deleteSticker(stickerId, requesterId)`
-Removes a sticker from a tile or global canvas.
-
-**Authorization:**
-- Participant can delete their own tile stickers
-- Host can delete any sticker (tile or global)
+Not implemented in the current app (types may still include empty `stickers` arrays).
 
 ---
 
@@ -492,10 +413,8 @@ All real-time events follow this envelope:
 | `PARTICIPANT_LEFT` | (deprecated) | — | Not emitted in PartyKit v1 |
 | `SLOT_ASSIGNED` | Server → All | `assignSlot` | `{ slotIndex, participantId, displayName }` |
 | `SLOT_REASSIGNED` | Server → All | `reassignSlot` | `{ slotIndex, participantId }` |
-| `PHOTO_SUBMITTED` | Server → All | `uploadPhoto` | `{ slotIndex, participantId, thumbnailUrl }` |
-| `STICKER_PLACED` | Server → All | `placeSticker` | `{ sticker: Sticker }` |
-| `STICKER_UPDATED` | Server → All | `updateSticker` | `{ stickerId, transform }` |
-| `STICKER_DELETED` | Server → All | `deleteSticker` | `{ stickerId }` |
+| `PHOTO_SUBMITTED` | Server → All | `uploadPhoto` | `{ slotIndex, participantId, thumbnailUrl, photoUrl }` |
+| `PHOTO_CLEARED` | Server → All | `clearSlotPhoto` | `{ slotIndex, participantId }` |
 | `THEME_CHANGED` | Server → All | `setTheme` | `{ theme: ThemeKey }` |
 | `SESSION_LOCKED` | Server → All | `lockSession` | `{ finalCollageUrl }` |
 | `SESSION_EXPIRED` | Server → All | Scheduler | `{}` |

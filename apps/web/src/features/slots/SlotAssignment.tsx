@@ -7,7 +7,10 @@ import {
   useDraggable,
   type DragEndEvent,
 } from "@dnd-kit/core";
-import type { Participant } from "@photosocial/shared";
+import {
+  slotsForParticipant,
+  type Participant,
+} from "@photosocial/shared";
 import { api } from "../../lib/api";
 import { useSession } from "../../context/SessionContext";
 import { CollageGrid } from "../collage/CollageGrid";
@@ -55,18 +58,11 @@ export function SlotAssignment() {
   if (!stored || !state) return null;
 
   const isHost = stored.isHost;
-  const hostParticipant = state.participants.find(
-    (p) => p.id === stored.participantId
+  const hostSlots = slotsForParticipant(
+    state.session.layout,
+    stored.participantId
   );
-  const hostNeedsSlot = isHost && hostParticipant?.assignedSlot === null;
-
-  const unassigned = state.participants.filter(
-    (p) =>
-      p.assignedSlot === null &&
-      !state.collage.slots.some(
-        (s) => s.participantId === p.id && s.photoUrl
-      )
-  );
+  const hostNeedsSlot = isHost && hostSlots.length === 0;
 
   async function assign(participantId: string, slotIndex: number) {
     await api.assignSlot(stored!.sessionId, stored!.wsToken, {
@@ -107,11 +103,9 @@ export function SlotAssignment() {
               {t("putMeInCollage")}
             </Button>
           )}
-          <h2>Participants</h2>
-          <p className={styles.hint}>
-            Drag onto a slot, or select a name then tap a slot
-          </p>
-          {unassigned.map((p) => (
+          <h2>{t("participants")}</h2>
+          <p className={styles.hint}>{t("assignSlotsHint")}</p>
+          {state.participants.map((p) => (
             <DraggableParticipant
               key={p.id}
               participant={p}
@@ -123,9 +117,6 @@ export function SlotAssignment() {
               }
             />
           ))}
-          {unassigned.length === 0 && (
-            <p className={styles.hint}>Everyone assigned!</p>
-          )}
         </aside>
 
         <div className={styles.gridWrap}>
@@ -141,7 +132,7 @@ export function SlotAssignment() {
             }}
           />
         </div>
-        </div>
+      </div>
 
       <DragOverlay>
         {activeParticipant ? (

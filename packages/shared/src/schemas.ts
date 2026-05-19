@@ -43,20 +43,8 @@ export const clearSlotPhotoSchema = z.object({
   slotIndex: z.number().int().min(0),
 });
 
-export const placeStickerSchema = z.object({
-  stickerKey: z.string(),
-  packId: z.string(),
-  targetScope: z.enum(["tile", "global"]),
-  targetId: z.string(),
-  x: z.number().min(0).max(100),
-  y: z.number().min(0).max(100),
-});
-
-export const updateStickerSchema = z.object({
-  x: z.number().min(0).max(100).optional(),
-  y: z.number().min(0).max(100).optional(),
-  scale: z.number().min(0.1).max(5).optional(),
-  rotation: z.number().min(-360).max(360).optional(),
+export const submitPhotoSchema = z.object({
+  slotIndex: z.number().int().min(0),
 });
 
 export const setThemeSchema = z.object({

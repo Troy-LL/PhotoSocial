@@ -65,6 +65,8 @@ No `https://`, no trailing slash.
 
 Commit and redeploy Vercel. **No environment variables** are required in the Vercel dashboard.
 
+**CORS:** Production Vercel URLs (`*.vercel.app`) are allowed automatically. For a custom domain, add `CORS_ORIGIN=https://your-domain.com` in the PartyKit dashboard.
+
 ## 6. Local development
 
 ```bash

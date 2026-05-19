@@ -217,7 +217,7 @@ export function SoloCameraPage() {
 
           preset: data.layout,
 
-          assignedSlot: activeSlot,
+                activeSlot,
 
         }}
 

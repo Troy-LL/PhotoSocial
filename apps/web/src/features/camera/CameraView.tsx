@@ -32,7 +32,7 @@ interface CameraViewProps {
   onCancel?: () => void;
   frameOverlay?: {
     preset: LayoutPreset;
-    assignedSlot: number;
+    activeSlot: number;
   };
   slotPhotos?: Record<number, string>;
   slotPhotoFits?: Record<number, SlotPhotoFit>;
@@ -104,7 +104,7 @@ export function CameraView({
 
   const layout = frameOverlay ? createLayout(frameOverlay.preset) : null;
   const activeSlotDef = layout?.slots.find(
-    (s) => s.index === frameOverlay?.assignedSlot
+    (s) => s.index === frameOverlay?.activeSlot
   );
   const cameraDenied = Boolean(error) && !stream;
   const canUseCamera =
@@ -416,7 +416,7 @@ export function CameraView({
           };
           const photoUrl = slotPhotos[slot.index];
           const isActive =
-            !inReview && slot.index === frameOverlay!.assignedSlot;
+            !inReview && slot.index === frameOverlay!.activeSlot;
           const retakable =
             Boolean(photoUrl) &&
             (canRetakeSlot

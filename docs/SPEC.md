@@ -16,8 +16,8 @@
 
 | User Type | Description |
 |---|---|
-| **Host** | Creates the session, sets the collage layout, assigns slots to participants, manages themes and stickers, triggers download/share |
-| **Participant** | Joins via Party Code, takes their assigned photo(s), adds stickers, views the growing collage |
+| **Host** | Creates the session, sets the collage layout, assigns slots to participants, manages themes, locks and downloads the collage |
+| **Participant** | Joins via Party Code, takes their assigned photo(s), views the growing collage |
 | **Guest (view-only)** | Optional future role — views the live collage without contributing |
 
 ---
@@ -34,8 +34,7 @@ Landing Page
   → Share Party Code with participants
   → Assign collage slots to participants by name/device
   → Monitor collage as photos come in (live update)
-  → Add stickers to the full collage
-  → Lock collage & trigger Download / Email sharing
+  → Lock collage & download the finished strip
 ```
 
 ### 3.2 Participant Flow
@@ -47,10 +46,10 @@ Landing Page
   → Wait for host to assign slot
   → Notification: "You've been assigned Slot 3!"
   → Camera activates — take photo (retake available before submitting)
-  → Add personal stickers to own photo tile
+  → View collage as photos arrive
   → Submit photo to collage
   → View full collage as it fills
-  → Download / Email their individual photo or full collage
+  → Download their tile or the full collage (after host locks)
 ```
 
 ---
@@ -92,32 +91,14 @@ Landing Page
 - **Mirror mode** toggle (default: on for selfies)
 - **Photo resolution:** Captured at device maximum, stored and served at `1200px` max on longest side
 
-### 4.4 Sticker System
-
-**Placement:**
-- Tap/click a sticker from the panel → it appears centered on the photo
-- Drag to reposition
-- Pinch-to-resize (mobile) / scroll-to-resize (desktop)
-- Two-finger rotate (mobile) / rotation handle (desktop)
-- Tap outside to deselect; double-tap to delete
-
-**Sticker Scope:**
-- Participants can sticker their own assigned tile
-- Host can sticker the full collage canvas (global stickers)
-- Stickers are layered above photos; host stickers are above participant stickers
-
-**Sticker Packs (v1):**
-- Celebration, Love, Nature, Retro, Text Stamps
-- Seasonal pack (auto-activated based on current month)
-
-### 4.5 Theme System
+### 4.4 Theme System
 
 - **Selectable by host** at session creation; can be changed mid-session
 - Theme change is broadcast live to all participants
 - Custom theme: HSL color picker → system generates surface + text tokens
 - All themes export cleanly (collage background reflects chosen theme)
 
-### 4.6 Slot Assignment
+### 4.5 Slot Assignment
 
 - Host sees a grid with participant names in a sidebar
 - Drag participant name onto a slot to assign
@@ -125,16 +106,15 @@ Landing Page
 - Host can reassign slots before a photo is submitted
 - After submission, slot is locked (host can unlock manually)
 
-### 4.7 Download & Sharing
+### 4.6 Download & Sharing
 
 | Method | Detail |
 |---|---|
-| **Local Download** | One-click download of full collage as `.jpg` or `.png` (host and participants) |
-| **Individual Tile Download** | Participant can download their own tile + stickers as image |
-| **Email** | User enters email → receives direct image link (no account required) |
-| **Link Share** | Host can generate a view-only link to the finished collage |
+| **Local Download** | One-click download of full collage as image (host and participants, after lock) |
+| **Individual Tile Download** | Participant can download their own tile |
+| **Quality** | Collage rendered on the client via `html2canvas` (retina-friendly) |
 
-**Download quality:** 2x pixel density (retina-ready), collage rendered via `html2canvas` or server-side canvas rendering.
+No email delivery in the current build.
 
 ---
 
@@ -142,8 +122,8 @@ Landing Page
 
 | Concern | Requirement |
 |---|---|
-| **Protocol** | WebSockets (preferred) or Server-Sent Events for live updates |
-| **Events to sync** | Slot assignments, photo submissions, sticker placements, theme changes, collage lock |
+| **Protocol** | PartyKit WebSocket + HTTPS |
+| **Events to sync** | Slot assignments, photo submissions, theme changes, collage lock |
 | **Latency target** | Updates visible to all participants within `<500ms` |
 | **Reconnect** | Auto-reconnect with exponential backoff on connection drop |
 | **Offline handling** | Show "Reconnecting…" banner; queue local actions and replay on reconnect |
@@ -156,7 +136,7 @@ Landing Page
 |---|---|
 | `< 480px` (Mobile S) | Single column; camera view full-screen; collage preview scrollable |
 | `480–768px` (Mobile L / Tablet) | Camera + collage split view |
-| `768–1200px` (Tablet / Small Desktop) | Two-column layout; sticker panel as sidebar |
+| `768–1200px` (Tablet / Small Desktop) | Two-column layout; host slot assignment sidebar |
 | `> 1200px` (Desktop) | Three-column layout; full collage preview; drag-and-drop slot assignment |
 
 **Touch requirements:**
@@ -195,20 +175,15 @@ Landing Page
 - Countdown overlay
 - Filter row (horizontal scroll)
 - Retake / Submit buttons
-- Sticker panel accessible via slide-up drawer (mobile) or right sidebar (desktop)
-
 ### 7.6 Live Collage Screen
 - Fills as photos are submitted
 - Empty slots show participant avatar/name placeholder
-- Global sticker panel for host
-- Download / Share buttons (active once host locks)
+- Download buttons (active once host locks)
 - Confetti burst animation on collage completion
 
 ### 7.7 Completion / Export Screen
 - Final collage preview (full-screen)
 - Download as image
-- Email entry field
-- Copy link
 - "Make another!" CTA
 
 ---
@@ -267,7 +242,7 @@ SlotDefinition
 | **Performance** | First contentful paint `< 1.5s` on 4G; camera activates `< 800ms` after permission grant |
 | **Compatibility** | Latest 2 versions of Chrome, Safari, Firefox, Edge; iOS Safari 15+; Android Chrome 110+ |
 | **Security** | No auth required; party codes are rate-limited; image uploads virus-scanned; no PII stored beyond session window |
-| **Privacy** | Photos stored temporarily (24h max); email addresses used only for delivery, not stored |
+| **Privacy** | Party photos live in PartyKit room state during the session; cleared on lock; solo mode stays in-browser only |
 | **Accessibility** | WCAG 2.1 AA compliance across all screens |
 | **Localization** | English v1; i18n-ready architecture (all strings externalized) |
 
@@ -275,6 +250,8 @@ SlotDefinition
 
 ## 10. Out of Scope (v1)
 
+- Sticker packs and placement
+- Email export / delivery
 - Video or GIF capture
 - User accounts / login
 - Persistent gallery / history

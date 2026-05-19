@@ -100,7 +100,12 @@ export const api = {
       body: JSON.stringify({ action: "clear-photo", ...body }),
     }),
 
-  uploadPhoto: async (sessionId: string, token: string, blob: Blob) => {
+  uploadPhoto: async (
+    sessionId: string,
+    token: string,
+    blob: Blob,
+    slotIndex: number
+  ) => {
     const [photoDataUrl, thumbDataUrl] = await Promise.all([
       blobToJpegDataUrl(blob, 1200),
       blobToJpegDataUrl(blob, 400),
@@ -112,6 +117,7 @@ export const api = {
         headers: authHeaders(token),
         body: JSON.stringify({
           action: "photos",
+          slotIndex,
           photoDataUrl,
           thumbDataUrl,
         }),

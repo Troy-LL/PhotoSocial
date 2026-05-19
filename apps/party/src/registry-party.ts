@@ -5,6 +5,7 @@ import {
   joinSessionSchema,
 } from "@photosocial/shared";
 import { err, jsonResponse, ok } from "./lib/api-response.js";
+import { withCorsHandler } from "./lib/cors.js";
 import { signWsToken } from "./lib/jwt.js";
 import { createRoomState } from "./lib/session-state.js";
 
@@ -23,27 +24,29 @@ async function saveCodes(room: Party.Room, codes: CodeMap): Promise<void> {
 export default class RegistryParty implements Party.Server {
   constructor(readonly room: Party.Room) {}
 
-  async onRequest(req: Party.Request) {
-    if (req.method !== "POST") {
-      return new Response("Method not allowed", { status: 405 });
-    }
+  onRequest(req: Party.Request) {
+    return withCorsHandler(req, async (request) => {
+      if (request.method !== "POST") {
+        return new Response("Method not allowed", { status: 405 });
+      }
 
-    let body: Record<string, unknown>;
-    try {
-      body = (await req.json()) as Record<string, unknown>;
-    } catch {
-      return jsonResponse(err("VALIDATION_ERROR", "Invalid JSON"), 400);
-    }
+      let body: Record<string, unknown>;
+      try {
+        body = (await request.json()) as Record<string, unknown>;
+      } catch {
+        return jsonResponse(err("VALIDATION_ERROR", "Invalid JSON"), 400);
+      }
 
-    const action = body.action as string | undefined;
-    if (action === "create") {
-      return this.handleCreate(body);
-    }
-    if (action === "join") {
-      return this.handleJoin(body);
-    }
+      const action = body.action as string | undefined;
+      if (action === "create") {
+        return this.handleCreate(body);
+      }
+      if (action === "join") {
+        return this.handleJoin(body);
+      }
 
-    return jsonResponse(err("VALIDATION_ERROR", "Unknown action"), 400);
+      return jsonResponse(err("VALIDATION_ERROR", "Unknown action"), 400);
+    });
   }
 
   private async handleCreate(body: Record<string, unknown>) {

@@ -23,9 +23,6 @@ export type WsEventType =
   | "SLOT_REASSIGNED"
   | "PHOTO_SUBMITTED"
   | "PHOTO_CLEARED"
-  | "STICKER_PLACED"
-  | "STICKER_UPDATED"
-  | "STICKER_DELETED"
   | "THEME_CHANGED"
   | "SESSION_LOCKED"
   | "SESSION_EXPIRED"
@@ -39,6 +36,8 @@ export interface SlotDefinition {
   colSpan: number;
   assignedTo: string | null;
   locked: boolean;
+  photoUrl: string | null;
+  thumbnailUrl: string | null;
 }
 
 export interface CollageLayout {
@@ -68,9 +67,6 @@ export interface Participant {
   sessionId: string;
   displayName: string;
   deviceId: string;
-  assignedSlot: number | null;
-  photoUrl: string | null;
-  thumbnailUrl: string | null;
   stickers: Sticker[];
   joinedAt: string;
 }
@@ -89,8 +85,6 @@ export interface Session {
   lastActivityAt: string;
   status: SessionStatus;
   finalCollageUrl?: string;
-  /** ISO timestamp when server final collage file is deleted (download window). */
-  finalCollageExpiresAt?: string;
   globalStickers: Sticker[];
 }
 

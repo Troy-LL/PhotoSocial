@@ -2,29 +2,33 @@ import { useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { motion } from "motion/react";
-import { useSession } from "../context/SessionContext";
+import {
+  formatSlotNumbers,
+  participantPhotoProgress,
+  slotsForParticipant,
+  type ThemeKey,
+} from "@photosocial/shared";
+import { useMyPhotoProgress, useSession } from "../context/SessionContext";
 import { ThemePicker } from "../features/themes/ThemePicker";
 import { api } from "../lib/api";
-import type { ThemeKey } from "@photosocial/shared";
 import { Button } from "../components/Button";
 import styles from "./LobbyPage.module.css";
 
 export function LobbyPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { stored, state, loading, assignedSlot, sessionError, refresh } =
+  const { stored, state, loading, assignedSlots, sessionError, refresh } =
     useSession();
 
   const isHost = stored?.isHost ?? false;
   const code = stored?.partyCode ?? "";
-  const me = state?.participants.find((p) => p.id === stored?.participantId);
-  const hasPhoto = Boolean(me?.photoUrl);
+  const progress = useMyPhotoProgress(state, stored?.participantId);
 
   useEffect(() => {
-    if (assignedSlot !== null && !hasPhoto && !isHost) {
+    if (progress.hasAnySlot && !progress.allFilled && !isHost) {
       navigate(`/party/${code}/camera`, { replace: true });
     }
-  }, [assignedSlot, hasPhoto, isHost, code, navigate]);
+  }, [progress.hasAnySlot, progress.allFilled, isHost, code, navigate]);
 
   async function handleThemeChange(theme: ThemeKey, customHue?: number) {
     if (!stored) return;
@@ -64,8 +68,16 @@ export function LobbyPage() {
   const slotsFull = state.session.layout.slots.every((s) => s.assignedTo);
 
   return (
-    <div className={styles.page}>
-      <div className={styles.codeCard}>
+    <motion.div
+      className={styles.page}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+    >
+      <motion.div
+        className={styles.codeCard}
+        initial={{ scale: 0.96, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+      >
         <p className={styles.codeLabel}>{t("partyCode")}</p>
         <p className={styles.code} aria-live="polite">
           {code}
@@ -92,7 +104,7 @@ export function LobbyPage() {
         <span className={styles.badge}>
           {state.participants.length} {t("participants")}
         </span>
-      </div>
+      </motion.div>
 
       {isHost && (
         <section className={styles.hostSection}>
@@ -116,9 +128,9 @@ export function LobbyPage() {
       {isHost && (
         <section className={styles.hostJoin}>
           <p className={styles.hostHint}>{t("hostCollageHint")}</p>
-          {assignedSlot === null ? (
+          {assignedSlots.length === 0 ? (
             slotsFull ? (
-              <p className={styles.hostHint}>{t("waitingForAssignment")}</p>
+              <p className={styles.hostHint}>{t("allSlotsTaken")}</p>
             ) : (
               <>
                 <Button fullWidth onClick={() => void assignHostToFirstSlot()}>
@@ -134,7 +146,7 @@ export function LobbyPage() {
           ) : (
             <Link to={`/party/${code}/camera`}>
               <Button fullWidth>
-                {hasPhoto ? t("retakeMyPhoto") : t("takeMyPhoto")}
+                {progress.allFilled ? t("retakeMyPhoto") : t("takeMyPhoto")}
               </Button>
             </Link>
           )}
@@ -144,18 +156,27 @@ export function LobbyPage() {
       <section>
         <h2>{t("participants")}</h2>
         <ul className={styles.list}>
-          {state.participants.map((p) => (
-            <li key={p.id}>
-              {p.displayName}
-              {p.id === state.session.hostId && " (host)"}
-              {p.assignedSlot !== null && ` · Slot ${p.assignedSlot + 1}`}
-              {p.photoUrl && " · Photo in"}
-            </li>
-          ))}
+          {state.participants.map((p) => {
+            const slots = slotsForParticipant(state.session.layout, p.id);
+            const { filled, total } = participantPhotoProgress(
+              state.session.layout,
+              state.collage.slots,
+              p.id
+            );
+            return (
+              <li key={p.id}>
+                {p.displayName}
+                {p.id === state.session.hostId && " (host)"}
+                {slots.length > 0 &&
+                  ` · ${t("participantSlots", { slots: formatSlotNumbers(slots) })}`}
+                {total > 0 && filled >= total && " · Photo in"}
+              </li>
+            );
+          })}
         </ul>
       </section>
 
-      {!isHost && assignedSlot === null && (
+      {!isHost && assignedSlots.length === 0 && (
         <motion.div
           className={styles.waiting}
           animate={{ opacity: [0.6, 1, 0.6] }}
@@ -170,6 +191,6 @@ export function LobbyPage() {
           {t("viewCollage")}
         </Button>
       </Link>
-    </div>
+    </motion.div>
   );
 }

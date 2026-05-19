@@ -1,5 +1,6 @@
 import {
   createLayout,
+  slotsForParticipant,
   type LayoutPreset,
   type Participant,
   type Session,
@@ -16,8 +17,37 @@ export interface RoomState {
   participants: Participant[];
 }
 
+type LegacyParticipant = Participant & {
+  assignedSlot?: number | null;
+  photoUrl?: string | null;
+  thumbnailUrl?: string | null;
+};
+
 export function newExpiry(): string {
   return new Date(Date.now() + SESSION_MAX_AGE_MS).toISOString();
+}
+
+/** Migrate older room blobs (per-participant photo + single slot). */
+export function normalizeRoomState(state: RoomState): RoomState {
+  for (const slot of state.session.layout.slots) {
+    if (slot.photoUrl === undefined) slot.photoUrl = null;
+    if (slot.thumbnailUrl === undefined) slot.thumbnailUrl = null;
+  }
+
+  for (const p of state.participants as LegacyParticipant[]) {
+    if (p.assignedSlot != null && p.photoUrl) {
+      const slot = state.session.layout.slots.find((s) => s.index === p.assignedSlot);
+      if (slot && !slot.photoUrl) {
+        slot.photoUrl = p.photoUrl;
+        slot.thumbnailUrl = p.thumbnailUrl ?? null;
+      }
+    }
+    delete p.assignedSlot;
+    delete p.photoUrl;
+    delete p.thumbnailUrl;
+  }
+
+  return state;
 }
 
 export function buildSlotStates(state: RoomState): SlotState[] {
@@ -30,8 +60,8 @@ export function buildSlotStates(state: RoomState): SlotState[] {
       index: slot.index,
       participantId: slot.assignedTo,
       displayName: assigned?.displayName ?? null,
-      photoUrl: assigned?.photoUrl ?? null,
-      thumbnailUrl: assigned?.thumbnailUrl ?? null,
+      photoUrl: slot.photoUrl,
+      thumbnailUrl: slot.thumbnailUrl,
       stickers: assigned?.stickers ?? [],
     };
   });
@@ -79,9 +109,6 @@ export function createRoomState(input: {
     sessionId: input.sessionId,
     displayName: input.hostName,
     deviceId: input.hostDeviceId,
-    assignedSlot: null,
-    photoUrl: null,
-    thumbnailUrl: null,
     stickers: [],
     joinedAt: now,
   };
@@ -105,17 +132,12 @@ export function assignSlot(
   const participant = state.participants.find((p) => p.id === participantId);
   if (!participant) return { error: "PARTICIPANT_NOT_FOUND" };
 
-  for (const s of state.session.layout.slots) {
-    if (s.assignedTo === participantId) s.assignedTo = null;
-    if (s.index === slotIndex) {
-      if (s.assignedTo && s.assignedTo !== participantId) {
-        const prev = state.participants.find((p) => p.id === s.assignedTo);
-        if (prev) prev.assignedSlot = null;
-      }
-      s.assignedTo = participantId;
-    }
+  if (slot.assignedTo && slot.assignedTo !== participantId) {
+    slot.photoUrl = null;
+    slot.thumbnailUrl = null;
+    slot.locked = false;
   }
-  participant.assignedSlot = slotIndex;
+  slot.assignedTo = participantId;
   touchSession(state);
   return {
     slotIndex,
@@ -137,9 +159,9 @@ export function setTheme(
 
 export function lockSession(state: RoomState): void {
   state.session.status = "locked";
-  for (const p of state.participants) {
-    p.photoUrl = null;
-    p.thumbnailUrl = null;
+  for (const slot of state.session.layout.slots) {
+    slot.photoUrl = null;
+    slot.thumbnailUrl = null;
   }
   touchSession(state);
 }
@@ -147,23 +169,21 @@ export function lockSession(state: RoomState): void {
 export function submitPhoto(
   state: RoomState,
   participantId: string,
+  slotIndex: number,
   photoUrl: string,
   thumbnailUrl: string
 ): { error: string } | { slotIndex: number; participantId: string; thumbnailUrl: string; photoUrl: string } {
   if (state.session.status === "locked") return { error: "SESSION_LOCKED" };
-  const participant = state.participants.find((p) => p.id === participantId);
-  if (!participant || participant.assignedSlot === null) {
+  const slot = state.session.layout.slots.find((s) => s.index === slotIndex);
+  if (!slot || slot.assignedTo !== participantId) {
     return { error: "NO_SLOT" };
   }
-  participant.photoUrl = photoUrl;
-  participant.thumbnailUrl = thumbnailUrl;
-  const slot = state.session.layout.slots.find(
-    (s) => s.index === participant.assignedSlot
-  );
-  if (slot) slot.locked = true;
+  slot.photoUrl = photoUrl;
+  slot.thumbnailUrl = thumbnailUrl;
+  slot.locked = true;
   touchSession(state);
   return {
-    slotIndex: participant.assignedSlot,
+    slotIndex,
     participantId,
     thumbnailUrl,
     photoUrl,
@@ -184,9 +204,9 @@ export function clearSlotPhoto(
   if (!isHost && assignee.id !== requesterParticipantId) {
     return { error: "FORBIDDEN" };
   }
-  if (!assignee.photoUrl) return { error: "NO_PHOTO" };
-  assignee.photoUrl = null;
-  assignee.thumbnailUrl = null;
+  if (!slot.photoUrl) return { error: "NO_PHOTO" };
+  slot.photoUrl = null;
+  slot.thumbnailUrl = null;
   slot.locked = false;
   touchSession(state);
   return { slotIndex, participantId: assignee.id };
@@ -220,9 +240,6 @@ export function joinParticipant(
     sessionId: state.session.id,
     displayName: input.displayName,
     deviceId: input.deviceId,
-    assignedSlot: null,
-    photoUrl: null,
-    thumbnailUrl: null,
     stickers: [],
     joinedAt: now,
   });
@@ -231,4 +248,11 @@ export function joinParticipant(
   }
   touchSession(state);
   return { rejoined: false };
+}
+
+export function assignedSlotsFor(
+  state: RoomState,
+  participantId: string
+): number[] {
+  return slotsForParticipant(state.session.layout, participantId);
 }
