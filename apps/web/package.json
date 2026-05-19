@@ -1,10 +1,10 @@
 {
-  "name": "@passandpic/web",
+  "name": "@photosocial/web",
   "version": "0.1.0",
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "pnpm --filter @photosocial/shared build && vite",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit"
@@ -14,7 +14,7 @@
     "@dnd-kit/utilities": "^3.2.2",
     "@fontsource/dm-sans": "^5.1.0",
     "@fontsource/dm-serif-display": "^5.1.0",
-    "@passandpic/shared": "workspace:*",
+    "@photosocial/shared": "workspace:*",
     "canvas-confetti": "^1.9.3",
     "html2canvas": "^1.4.1",
     "i18next": "^24.2.0",

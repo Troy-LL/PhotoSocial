@@ -1,23 +1,38 @@
 .grid {
   display: grid;
   gap: 8px;
-  aspect-ratio: 1;
   max-width: 100%;
-  background: var(--color-surface);
+  margin-inline: auto;
+  background: var(--layout-thumb-frame, var(--color-surface));
   border-radius: var(--radius-card);
   padding: 8px;
   box-shadow: var(--shadow-card);
   position: relative;
   overflow: hidden;
+  transition:
+    background-color var(--transition-theme),
+    box-shadow var(--transition-theme);
+}
+
+.vertical {
+  width: min(100%, 280px);
+}
+
+.horizontal {
+  width: 100%;
+  max-height: min(60vh, 320px);
 }
 
 .slot {
   position: relative;
   border-radius: 8px;
   overflow: hidden;
-  background: var(--color-surface-raised);
+  background: var(--layout-thumb-cell, var(--color-surface-raised));
   border: 1px solid var(--color-border);
   min-height: 80px;
+  transition:
+    background-color var(--transition-theme),
+    border-color var(--transition-theme);
 }
 
 .slot.selected,

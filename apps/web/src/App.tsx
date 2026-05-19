@@ -1,11 +1,12 @@
 import { lazy, Suspense } from "react";
-import { BrowserRouter, Routes, Route, Navigate, useParams } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, Outlet, useParams } from "react-router-dom";
 import { Layout } from "./components/Layout";
 import { SessionProvider, useSession } from "./context/SessionContext";
 import { LandingPage } from "./pages/LandingPage";
 import { CreatePage } from "./pages/CreatePage";
 import { JoinPage } from "./pages/JoinPage";
 import { getStoredSession } from "./lib/session-storage";
+import { SoloProvider } from "./context/SoloContext";
 
 const LobbyPage = lazy(() =>
   import("./pages/LobbyPage").then((m) => ({ default: m.LobbyPage }))
@@ -21,6 +22,15 @@ const CollagePage = lazy(() =>
 );
 const ExportPage = lazy(() =>
   import("./pages/ExportPage").then((m) => ({ default: m.ExportPage }))
+);
+const SoloSetupPage = lazy(() =>
+  import("./pages/solo/SoloSetupPage").then((m) => ({ default: m.SoloSetupPage }))
+);
+const SoloCameraPage = lazy(() =>
+  import("./pages/solo/SoloCameraPage").then((m) => ({ default: m.SoloCameraPage }))
+);
+const SoloCollagePage = lazy(() =>
+  import("./pages/solo/SoloCollagePage").then((m) => ({ default: m.SoloCollagePage }))
 );
 
 function PartyShell({ children }: { children: React.ReactNode }) {
@@ -47,6 +57,18 @@ function PartyRoute({ children }: { children: React.ReactNode }) {
 
 function Loading() {
   return <p style={{ textAlign: "center", padding: 48 }}>Loading…</p>;
+}
+
+function SoloShell() {
+  return (
+    <SoloProvider>
+      <Layout>
+        <Suspense fallback={<Loading />}>
+          <Outlet />
+        </Suspense>
+      </Layout>
+    </SoloProvider>
+  );
 }
 
 export default function App() {
@@ -77,6 +99,11 @@ export default function App() {
             </Layout>
           }
         />
+        <Route path="/solo" element={<SoloShell />}>
+          <Route index element={<SoloSetupPage />} />
+          <Route path="camera" element={<SoloCameraPage />} />
+          <Route path="collage" element={<SoloCollagePage />} />
+        </Route>
         <Route
           path="/party/:code/lobby"
           element={

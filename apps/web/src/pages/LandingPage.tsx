@@ -1,11 +1,30 @@
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { motion } from "motion/react";
+import {
+  THEME_LABELS,
+  UI_THEME_PRESETS,
+  type ThemeKey,
+} from "@photosocial/shared";
 import { Button } from "../components/Button";
+import {
+  applyThemePreference,
+  getThemePreference,
+  saveThemePreference,
+} from "../lib/theme-preference";
 import styles from "./LandingPage.module.css";
 
 export function LandingPage() {
   const { t } = useTranslation();
+  const [theme, setTheme] = useState<ThemeKey>(() => getThemePreference().theme);
+
+  function selectTheme(next: ThemeKey) {
+    setTheme(next);
+    const pref = { theme: next };
+    saveThemePreference(pref);
+    applyThemePreference(pref);
+  }
 
   return (
     <div className={styles.page}>
@@ -34,11 +53,26 @@ export function LandingPage() {
             {t("joinParty")}
           </Button>
         </Link>
+        <Link to="/solo">
+          <Button variant="ghost" fullWidth>
+            {t("soloBooth")}
+          </Button>
+        </Link>
       </div>
 
-      <div className={styles.themeCarousel} aria-hidden="true">
-        {["snow", "petal", "midnight", "citrus"].map((theme) => (
-          <span key={theme} className={`${styles.themeDot} ${styles[theme]}`} />
+      <div className={styles.themeCarousel} role="radiogroup" aria-label="Theme">
+        {UI_THEME_PRESETS.map((key) => (
+          <button
+            key={key}
+            type="button"
+            role="radio"
+            aria-checked={theme === key}
+            className={`${styles.themeDot} ${styles[key]} ${theme === key ? styles.active : ""}`}
+            onClick={() => selectTheme(key)}
+            title={THEME_LABELS[key]}
+          >
+            <span className="sr-only">{THEME_LABELS[key]}</span>
+          </button>
         ))}
       </div>
     </div>

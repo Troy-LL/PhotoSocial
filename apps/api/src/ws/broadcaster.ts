@@ -1,5 +1,5 @@
 import type { Server as SocketServer } from "socket.io";
-import type { WsEnvelope, WsEventType } from "@passandpic/shared";
+import type { WsEnvelope, WsEventType } from "@photosocial/shared";
 
 let io: SocketServer | null = null;
 

@@ -1,6 +1,6 @@
-import type { ThemeKey, ThemeTokens } from "./types.js";
+import type { CoreThemeTokens, ThemeKey, ThemeTokens } from "./types.js";
 
-const PRESET_THEMES: Record<Exclude<ThemeKey, "custom">, ThemeTokens> = {
+const PRESET_THEMES: Record<Exclude<ThemeKey, "custom">, CoreThemeTokens> = {
   snow: {
     "--color-bg": "#ffffff",
     "--color-surface": "#f7f7f7",
@@ -53,6 +53,64 @@ const PRESET_THEMES: Record<Exclude<ThemeKey, "custom">, ThemeTokens> = {
   },
 };
 
+function parseHex(hex: string): [number, number, number] {
+  const raw = hex.replace("#", "");
+  const full =
+    raw.length === 3
+      ? raw
+          .split("")
+          .map((c) => c + c)
+          .join("")
+      : raw;
+  return [
+    parseInt(full.slice(0, 2), 16),
+    parseInt(full.slice(2, 4), 16),
+    parseInt(full.slice(4, 6), 16),
+  ];
+}
+
+function relativeLuminance(hex: string): number {
+  const [r, g, b] = parseHex(hex).map((v) => {
+    const c = v / 255;
+    return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+  });
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
+
+function mixHex(a: string, b: string, amount: number): string {
+  const [ar, ag, ab] = parseHex(a);
+  const [br, bg, bb] = parseHex(b);
+  const ch = (from: number, to: number) =>
+    Math.round(from + (to - from) * amount);
+  return `#${[ch(ar, br), ch(ag, bg), ch(ab, bb)]
+    .map((x) => x.toString(16).padStart(2, "0"))
+    .join("")}`;
+}
+
+/** Strip frame + photo-window colors with readable contrast per theme. */
+function withLayoutThumbTokens(base: CoreThemeTokens): ThemeTokens {
+  const frame = base["--color-surface"];
+  const { textPrimary, accent } = {
+    textPrimary: base["--color-text-primary"],
+    accent: base["--color-accent"],
+  };
+  const frameIsLight = relativeLuminance(frame) > 0.55;
+  const cell = frameIsLight
+    ? mixHex(textPrimary, accent, 0.35)
+    : mixHex(textPrimary, accent, 0.3);
+  const cellIsLight = relativeLuminance(cell) > 0.55;
+  const cellFg = cellIsLight
+    ? base["--color-text-secondary"]
+    : mixHex("#ffffff", textPrimary, 0.65);
+
+  return {
+    ...base,
+    "--layout-thumb-frame": frame,
+    "--layout-thumb-cell": cell,
+    "--layout-thumb-cell-fg": cellFg,
+  };
+}
+
 function hslToHex(h: number, s: number, l: number): string {
   s /= 100;
   l /= 100;
@@ -67,30 +125,51 @@ function hslToHex(h: number, s: number, l: number): string {
   return `#${f(0)}${f(8)}${f(4)}`;
 }
 
+function normalizeHue(hue?: number | null): number | undefined {
+  if (hue == null || typeof hue !== "number" || !Number.isFinite(hue)) {
+    return undefined;
+  }
+  return Math.max(0, Math.min(360, Math.round(hue)));
+}
+
+function resolvePresetKey(theme: ThemeKey): Exclude<ThemeKey, "custom"> {
+  if (theme === "custom") return "snow";
+  if (theme in PRESET_THEMES) return theme as Exclude<ThemeKey, "custom">;
+  return "snow";
+}
+
 export function resolveThemeTokens(
   theme: ThemeKey,
   customHue?: number
 ): ThemeTokens {
-  if (theme !== "custom" || customHue === undefined) {
-    const key = theme === "custom" ? "snow" : theme;
-    return PRESET_THEMES[key];
+  const hue = normalizeHue(customHue);
+  if (theme !== "custom" || hue === undefined) {
+    return withLayoutThumbTokens(PRESET_THEMES[resolvePresetKey(theme)]);
   }
 
-  const accent = hslToHex(customHue, 45, 45);
-  const surface = hslToHex(customHue, 25, 94);
-  const bg = hslToHex(customHue, 15, 98);
+  const accent = hslToHex(hue, 45, 45);
+  const surface = hslToHex(hue, 25, 94);
+  const bg = hslToHex(hue, 15, 98);
 
-  return {
+  return withLayoutThumbTokens({
     "--color-bg": bg,
     "--color-surface": surface,
     "--color-surface-raised": "#ffffff",
     "--color-text-primary": "#1a1a1a",
     "--color-text-secondary": "#5a5a5a",
     "--color-accent": accent,
-    "--color-border": hslToHex(customHue, 20, 88),
+    "--color-border": hslToHex(hue, 20, 88),
     "--shadow-card": "0 2px 16px rgba(0,0,0,0.06)",
-  };
+  });
 }
+
+/** Preset themes shown in the UI (4 swatches + custom color wheel). */
+export const UI_THEME_PRESETS = [
+  "snow",
+  "petal",
+  "midnight",
+  "citrus",
+] as const satisfies readonly ThemeKey[];
 
 export const THEME_LABELS: Record<ThemeKey, string> = {
   snow: "Snow",

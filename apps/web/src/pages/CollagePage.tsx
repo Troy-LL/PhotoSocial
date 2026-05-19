@@ -51,12 +51,14 @@ export function CollagePage() {
         </>
       )}
 
-      {!isHost && stored.participantId && (
-        <StickerPanel
-          targetScope="tile"
-          targetId={stored.participantId}
-        />
-      )}
+      {stored.participantId &&
+        state.participants.find((p) => p.id === stored.participantId)
+          ?.photoUrl && (
+          <StickerPanel
+            targetScope="tile"
+            targetId={stored.participantId}
+          />
+        )}
 
       {isLocked && (
         <Link to={`/party/${code}/export`}>

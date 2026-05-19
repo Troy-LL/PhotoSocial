@@ -30,10 +30,27 @@ section h2 {
   margin-bottom: 12px;
 }
 
+.layoutGroupLabel {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  margin: 0 0 8px;
+}
+
+.layoutGroupLabel:not(:first-of-type) {
+  margin-top: 20px;
+}
+
 .layoutGrid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
-  gap: 12px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+@media (max-width: 480px) {
+  .layoutGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 .layoutCard {
@@ -52,18 +69,6 @@ section h2 {
 
 .layoutCard.active {
   border-color: var(--color-accent);
-}
-
-.miniGrid {
-  display: grid;
-  gap: 2px;
-  width: 48px;
-  height: 48px;
-}
-
-.miniCell {
-  background: var(--color-surface);
-  border-radius: 2px;
 }
 
 .error {

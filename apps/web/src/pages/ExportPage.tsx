@@ -33,7 +33,7 @@ export function ExportPage() {
     if (finalUrl) {
       const a = document.createElement("a");
       a.href = finalUrl;
-      a.download = `passandpic-${stored!.partyCode}.jpg`;
+      a.download = `PhotoSocial-${stored!.partyCode}.jpg`;
       a.click();
       return;
     }
@@ -42,7 +42,7 @@ export function ExportPage() {
     if (!el) return;
     const canvas = await html2canvas(el, { scale: 2, useCORS: true });
     const link = document.createElement("a");
-    link.download = `passandpic-${stored!.partyCode}.png`;
+    link.download = `PhotoSocial-${stored!.partyCode}.png`;
     link.href = canvas.toDataURL("image/png");
     link.click();
   }

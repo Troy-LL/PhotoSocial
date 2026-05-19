@@ -1,4 +1,4 @@
-import type { Sticker } from "@passandpic/shared";
+import type { Sticker } from "@photosocial/shared";
 import styles from "./StickerLayer.module.css";
 
 export function StickerLayer({

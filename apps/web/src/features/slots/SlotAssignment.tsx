@@ -1,14 +1,17 @@
 import { useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import {
   DndContext,
   DragOverlay,
   useDraggable,
   type DragEndEvent,
 } from "@dnd-kit/core";
-import type { Participant } from "@passandpic/shared";
+import type { Participant } from "@photosocial/shared";
 import { api } from "../../lib/api";
 import { useSession } from "../../context/SessionContext";
 import { CollageGrid } from "../collage/CollageGrid";
+import { Button } from "../../components/Button";
 import styles from "./SlotAssignment.module.css";
 
 function DraggableParticipant({
@@ -40,6 +43,9 @@ function DraggableParticipant({
 }
 
 export function SlotAssignment() {
+  const { t } = useTranslation();
+  const { code } = useParams();
+  const navigate = useNavigate();
   const { stored, state, refresh } = useSession();
   const [selectedParticipant, setSelectedParticipant] = useState<string | null>(
     null
@@ -47,6 +53,12 @@ export function SlotAssignment() {
   const [activeId, setActiveId] = useState<string | null>(null);
 
   if (!stored || !state) return null;
+
+  const isHost = stored.isHost;
+  const hostParticipant = state.participants.find(
+    (p) => p.id === stored.participantId
+  );
+  const hostNeedsSlot = isHost && hostParticipant?.assignedSlot === null;
 
   const unassigned = state.participants.filter(
     (p) =>
@@ -63,6 +75,14 @@ export function SlotAssignment() {
     });
     setSelectedParticipant(null);
     await refresh();
+  }
+
+  async function assignHostAndShoot() {
+    if (!stored || !state) return;
+    const free = state.session.layout.slots.find((s) => !s.assignedTo);
+    if (!free) return;
+    await assign(stored.participantId, free.index);
+    navigate(`/party/${code}/camera`);
   }
 
   function handleDragEnd(event: DragEndEvent) {
@@ -82,6 +102,11 @@ export function SlotAssignment() {
     >
       <div className={styles.layout}>
         <aside className={styles.sidebar}>
+          {hostNeedsSlot && (
+            <Button fullWidth onClick={() => void assignHostAndShoot()}>
+              {t("putMeInCollage")}
+            </Button>
+          )}
           <h2>Participants</h2>
           <p className={styles.hint}>
             Drag onto a slot, or select a name then tap a slot

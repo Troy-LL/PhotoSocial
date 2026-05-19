@@ -52,7 +52,17 @@ export function CameraPage() {
         </motion.div>
       )}
 
-      <CameraView onCapture={handleCapture} />
+      <CameraView
+        onCapture={handleCapture}
+        frameOverlay={
+          state?.session.layout.preset != null && assignedSlot !== null
+            ? {
+                preset: state.session.layout.preset,
+                assignedSlot,
+              }
+            : undefined
+        }
+      />
 
       {me && !me.photoUrl && stored && (
         <StickerPanel targetScope="tile" targetId={stored.participantId} />

@@ -1,7 +1,9 @@
-import { THEME_LABELS, type ThemeKey } from "@passandpic/shared";
+import {
+  THEME_LABELS,
+  UI_THEME_PRESETS,
+  type ThemeKey,
+} from "@photosocial/shared";
 import styles from "./ThemePicker.module.css";
-
-const PRESETS: ThemeKey[] = ["snow", "midnight", "petal", "slate", "citrus"];
 
 interface ThemePickerProps {
   value: ThemeKey;
@@ -12,7 +14,7 @@ interface ThemePickerProps {
 export function ThemePicker({ value, customHue = 200, onChange }: ThemePickerProps) {
   return (
     <div className={styles.row} role="radiogroup" aria-label="Theme">
-      {PRESETS.map((theme) => (
+      {UI_THEME_PRESETS.map((theme) => (
         <button
           key={theme}
           type="button"
@@ -33,6 +35,7 @@ export function ThemePicker({ value, customHue = 200, onChange }: ThemePickerPro
         onClick={() => onChange("custom", customHue)}
         title="Custom"
       >
+        <span className={styles.wheel} aria-hidden="true" />
         <span className="sr-only">Custom</span>
       </button>
       {value === "custom" && (

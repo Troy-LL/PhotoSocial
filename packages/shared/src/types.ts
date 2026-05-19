@@ -4,7 +4,15 @@ export type ThemeKey = "snow" | "midnight" | "petal" | "slate" | "citrus" | "cus
 
 export type FilterKey = "none" | "bw" | "warm" | "cool" | "fade";
 
-export type LayoutPreset = "duo" | "squad" | "party" | "strip" | "panorama";
+export type LayoutPreset =
+  | "strip4"
+  | "strip3Top"
+  | "strip4Top"
+  | "strip3Center"
+  | "strip4H"
+  | "strip3TopH"
+  | "strip4TopH"
+  | "strip3CenterH";
 
 export type StickerScope = "tile" | "global";
 
@@ -36,6 +44,8 @@ export interface CollageLayout {
   preset: LayoutPreset;
   rows: number;
   cols: number;
+  orientation: "vertical" | "horizontal";
+  aspectRatio: string;
   slots: SlotDefinition[];
 }
 
@@ -118,7 +128,7 @@ export interface ApiError {
 
 export type ApiResponse<T> = ApiSuccess<T> | ApiError;
 
-export interface ThemeTokens {
+export interface CoreThemeTokens {
   "--color-bg": string;
   "--color-surface": string;
   "--color-surface-raised": string;
@@ -127,4 +137,11 @@ export interface ThemeTokens {
   "--color-accent": string;
   "--color-border": string;
   "--shadow-card": string;
+}
+
+/** Includes contrast-safe photobooth strip preview colors. */
+export interface ThemeTokens extends CoreThemeTokens {
+  "--layout-thumb-frame": string;
+  "--layout-thumb-cell": string;
+  "--layout-thumb-cell-fg": string;
 }

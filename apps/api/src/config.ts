@@ -8,10 +8,10 @@ export const config = {
   maxParticipants: 20,
   supabaseUrl: process.env.SUPABASE_URL,
   supabaseKey: process.env.SUPABASE_SERVICE_ROLE_KEY,
-  supabaseBucket: process.env.SUPABASE_BUCKET || "passandpic",
+  supabaseBucket: process.env.SUPABASE_BUCKET || "PhotoSocial",
   smtp: {
     host: process.env.SMTP_HOST || "localhost",
     port: Number(process.env.SMTP_PORT) || 1025,
-    from: process.env.SMTP_FROM || "noreply@passandpic.local",
+    from: process.env.SMTP_FROM || "noreply@photosocial.local",
   },
 };

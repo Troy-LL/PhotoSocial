@@ -1,11 +1,14 @@
 import { z } from "zod";
 
 export const layoutPresetSchema = z.enum([
-  "duo",
-  "squad",
-  "party",
-  "strip",
-  "panorama",
+  "strip4",
+  "strip3Top",
+  "strip4Top",
+  "strip3Center",
+  "strip4H",
+  "strip3TopH",
+  "strip4TopH",
+  "strip3CenterH",
 ]);
 
 export const themeKeySchema = z.enum([

@@ -1,4 +1,4 @@
-# FUNCTION.md — PassAndPic Technical Function Reference
+# FUNCTION.md — PhotoSocial Technical Function Reference
 
 > *A complete map of system functions, component behaviors, and event contracts.*
 
@@ -472,7 +472,7 @@ Triggers a local file download.
 ```ts
 {
   source: string | Blob,      // URL or Blob
-  filename: string,           // e.g. "passandpic-squad-2025.jpg"
+  filename: string,           // e.g. "PhotoSocial-squad-2025.jpg"
 }
 ```
 
@@ -501,7 +501,7 @@ Emails a download link to the provided address.
 - Server sends transactional email containing:
   - Hosted image preview (inline)
   - Direct download link (signed, 72h expiry)
-  - "Powered by PassAndPic" footer
+  - "Powered by PhotoSocial" footer
 - Email address is not stored beyond the delivery queue flush
 
 **Rate limiting:** Max 3 email sends per participant per session.
@@ -576,4 +576,4 @@ All API responses follow:
 
 ---
 
-*This document is the source of truth for PassAndPic's functional behavior. All implementation decisions should trace back to entries here.*
+*This document is the source of truth for PhotoSocial's functional behavior. All implementation decisions should trace back to entries here.*

@@ -7,8 +7,8 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import type { SessionState, ThemeKey, WsEnvelope } from "@passandpic/shared";
-import { resolveThemeTokens } from "@passandpic/shared";
+import type { SessionState, ThemeKey, WsEnvelope } from "@photosocial/shared";
+import { resolveThemeTokens } from "@photosocial/shared";
 import { api } from "../lib/api";
 import {
   clearSession,
@@ -65,22 +65,29 @@ export function SessionProvider({
       return;
     }
 
-    const res = await api.getSessionState(s.sessionId, s.wsToken);
-    if (res.success) {
-      setState(res.data);
-      setSessionError(null);
-      const me = res.data.participants.find((p) => p.id === s.participantId);
-      setAssignedSlot(me?.assignedSlot ?? null);
-    } else {
-      const code = res.error.code;
-      if (code === "SESSION_NOT_FOUND" || code === "UNAUTHORIZED") {
-        clearSession();
-        setSessionError("This party is no longer available. Please join again.");
+    try {
+      const res = await api.getSessionState(s.sessionId, s.wsToken);
+      if (res.success) {
+        setState(res.data);
+        setSessionError(null);
+        const me = res.data.participants.find((p) => p.id === s.participantId);
+        setAssignedSlot(me?.assignedSlot ?? null);
       } else {
-        setSessionError(res.error.message);
+        const code = res.error.code;
+        if (code === "SESSION_NOT_FOUND" || code === "UNAUTHORIZED") {
+          clearSession();
+          setSessionError("This party is no longer available. Please join again.");
+        } else {
+          setSessionError(res.error.message);
+        }
       }
+    } catch {
+      setSessionError(
+        "Could not reach the party server. Start the API (pnpm dev from project root) and refresh."
+      );
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   }, [stored, partyCode]);
 
   useEffect(() => {

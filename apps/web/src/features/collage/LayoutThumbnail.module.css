@@ -1,0 +1,22 @@
+.thumb {
+  display: grid;
+  gap: 2px;
+  width: 100%;
+  max-width: 56px;
+  padding: 3px;
+  background: var(--layout-thumb-frame, var(--color-surface));
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  box-sizing: border-box;
+  transition:
+    background-color var(--transition-theme),
+    border-color var(--transition-theme);
+}
+
+.cell {
+  background: var(--layout-thumb-cell, var(--color-text-primary));
+  border-radius: 1px;
+  min-height: 0;
+  min-width: 0;
+  transition: background-color var(--transition-theme);
+}

@@ -1,4 +1,4 @@
-const SESSION_KEY = "passandpic_session";
+const SESSION_KEY = "PhotoSocial_session";
 
 export interface StoredSession {
   sessionId: string;

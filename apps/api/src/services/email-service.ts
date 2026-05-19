@@ -15,16 +15,16 @@ export async function sendCollageEmail(
 ): Promise<void> {
   const subject =
     scope === "full-collage"
-      ? "Your PassAndPic collage is ready!"
-      : "Your PassAndPic photo is ready!";
+      ? "Your PhotoSocial collage is ready!"
+      : "Your PhotoSocial photo is ready!";
 
-  const text = `Your photo is ready to download:\n${downloadUrl}\n\nThis link expires in 72 hours.\n\nPowered by PassAndPic`;
+  const text = `Your photo is ready to download:\n${downloadUrl}\n\nThis link expires in 72 hours.\n\nPowered by PhotoSocial`;
 
   const html = `
     <p>Your ${scope === "full-collage" ? "collage" : "photo"} is ready!</p>
     <p><a href="${downloadUrl}">Download your image</a></p>
     <p><small>This link expires in 72 hours.</small></p>
-    <p><small>Powered by PassAndPic</small></p>
+    <p><small>Powered by PhotoSocial</small></p>
   `;
 
   await transporter.sendMail({

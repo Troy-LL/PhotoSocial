@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { FilterKey } from "@passandpic/shared";
+import type { FilterKey } from "@photosocial/shared";
 
 const FILTER_CSS: Record<FilterKey, string> = {
   none: "none",

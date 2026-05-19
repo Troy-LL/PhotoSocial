@@ -4,7 +4,7 @@ import type {
   SessionState,
   SlotState,
   Sticker,
-} from "@passandpic/shared";
+} from "@photosocial/shared";
 import { mkdir, rm } from "node:fs/promises";
 import { join } from "node:path";
 import { config } from "../config.js";

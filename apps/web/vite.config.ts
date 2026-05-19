@@ -1,6 +1,10 @@
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import { VitePWA } from "vite-plugin-pwa";
+
+const rootDir = path.dirname(fileURLToPath(import.meta.url));
 
 export default defineConfig({
   plugins: [
@@ -12,8 +16,8 @@ export default defineConfig({
       registerType: "autoUpdate",
       includeAssets: ["favicon.svg"],
       manifest: {
-        name: "PassAndPic",
-        short_name: "PassAndPic",
+        name: "PhotoSocial",
+        short_name: "PhotoSocial",
         description: "Everyone's camera. One shared memory.",
         theme_color: "#ffffff",
         background_color: "#ffffff",
@@ -42,6 +46,11 @@ export default defineConfig({
       },
     }),
   ],
+  resolve: {
+    alias: {
+      "@photosocial/shared": path.resolve(rootDir, "../../packages/shared/src"),
+    },
+  },
   server: {
     port: 5173,
     proxy: {

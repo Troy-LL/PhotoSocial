@@ -26,7 +26,7 @@ importers:
       '@hono/node-server':
         specifier: ^1.13.7
         version: 1.19.14(hono@4.12.20)
-      '@passandpic/shared':
+      '@photosocial/shared':
         specifier: workspace:*
         version: link:../../packages/shared
       '@supabase/supabase-js':
@@ -81,7 +81,7 @@ importers:
       '@fontsource/dm-serif-display':
         specifier: ^5.1.0
         version: 5.2.8
-      '@passandpic/shared':
+      '@photosocial/shared':
         specifier: workspace:*
         version: link:../../packages/shared
       canvas-confetti:

@@ -6,7 +6,7 @@ import {
   placeStickerSchema,
   setThemeSchema,
   updateStickerSchema,
-} from "@passandpic/shared";
+} from "@photosocial/shared";
 import { Hono } from "hono";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";

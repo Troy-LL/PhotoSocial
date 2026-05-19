@@ -1,4 +1,4 @@
-import type { ApiError, ApiResponse, ApiSuccess } from "@passandpic/shared";
+import type { ApiError, ApiResponse, ApiSuccess } from "@photosocial/shared";
 
 export function ok<T>(data: T): ApiSuccess<T> {
   return { success: true, data };

@@ -1,9 +1,9 @@
 import { test, expect } from "@playwright/test";
 
-test.describe("PassAndPic party flow", () => {
+test.describe("PhotoSocial party flow", () => {
   test("landing page loads", async ({ page }) => {
     await page.goto("/");
-    await expect(page.getByRole("heading", { name: "PassAndPic" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "PhotoSocial" })).toBeVisible();
     await expect(page.getByRole("link", { name: "Create Party" })).toBeVisible();
     await expect(page.getByRole("link", { name: "Join Party" })).toBeVisible();
   });
@@ -11,7 +11,7 @@ test.describe("PassAndPic party flow", () => {
   test("host creates party and sees lobby", async ({ page }) => {
     await page.goto("/create");
     await page.getByPlaceholder("Maya").fill("Host Alex");
-    await page.getByRole("button", { name: "Squad" }).click();
+    await page.getByRole("button", { name: "4-Up", exact: true }).click();
     await page.getByRole("button", { name: "Create Party" }).click();
 
     await expect(page).toHaveURL(/\/party\/[A-Z]+-\d{4}\/lobby/);
@@ -36,7 +36,7 @@ test.describe("PassAndPic party flow", () => {
 
     await hostPage.goto("/create");
     await hostPage.getByPlaceholder("Maya").fill("Host");
-    await hostPage.getByRole("button", { name: "Duo" }).click();
+    await hostPage.getByRole("button", { name: "3-Up Center Wide", exact: true }).click();
     await hostPage.getByRole("button", { name: "Create Party", exact: true }).click();
     await hostPage.waitForURL(/\/lobby/);
 

@@ -5,7 +5,7 @@ import {
   type Session,
   type SessionState,
   type ThemeKey,
-} from "@passandpic/shared";
+} from "@photosocial/shared";
 import { v4 as uuid } from "uuid";
 import { config } from "../config.js";
 import { signWsToken } from "../lib/jwt.js";

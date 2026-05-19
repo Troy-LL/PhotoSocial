@@ -20,13 +20,13 @@ export default defineConfig({
   ],
   webServer: [
     {
-      command: "pnpm --filter @passandpic/shared build && pnpm --filter @passandpic/api dev",
+      command: "pnpm --filter @photosocial/shared build && pnpm --filter @photosocial/api dev",
       url: "http://localhost:3001/health",
       reuseExistingServer: !process.env.CI,
       timeout: 120000,
     },
     {
-      command: "pnpm --filter @passandpic/web dev",
+      command: "pnpm --filter @photosocial/web dev",
       url: "http://localhost:5173",
       reuseExistingServer: !process.env.CI,
       timeout: 120000,

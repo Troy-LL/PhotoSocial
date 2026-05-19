@@ -1,5 +1,5 @@
 import { io, type Socket } from "socket.io-client";
-import type { WsEnvelope } from "@passandpic/shared";
+import type { WsEnvelope } from "@photosocial/shared";
 
 type EventHandler = (envelope: WsEnvelope) => void;
 

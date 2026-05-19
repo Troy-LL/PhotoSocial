@@ -1,5 +1,5 @@
 {
-  "name": "passandpic",
+  "name": "PhotoSocial",
   "private": true,
   "scripts": {
     "dev": "npx pnpm@9.15.0 -r --parallel run dev",

@@ -46,8 +46,10 @@ export async function renderFinalCollage(
   cols: number,
   rows: number
 ): Promise<string> {
-  const cellW = 400;
-  const cellH = 400;
+  const verticalStrip = cols === 1 && rows > 1;
+  const horizontalStrip = rows === 1 && cols > 1;
+  const cellW = verticalStrip ? 320 : horizontalStrip ? 160 : 400;
+  const cellH = verticalStrip ? 110 : horizontalStrip ? 320 : 400;
   const width = cols * cellW;
   const height = rows * cellH;
 

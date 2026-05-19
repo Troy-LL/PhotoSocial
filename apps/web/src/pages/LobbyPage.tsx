@@ -5,23 +5,26 @@ import { motion } from "motion/react";
 import { useSession } from "../context/SessionContext";
 import { ThemePicker } from "../features/themes/ThemePicker";
 import { api } from "../lib/api";
-import type { ThemeKey } from "@passandpic/shared";
+import type { ThemeKey } from "@photosocial/shared";
 import { Button } from "../components/Button";
 import styles from "./LobbyPage.module.css";
 
 export function LobbyPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { stored, state, loading, assignedSlot, sessionError } = useSession();
+  const { stored, state, loading, assignedSlot, sessionError, refresh } =
+    useSession();
 
   const isHost = stored?.isHost ?? false;
   const code = stored?.partyCode ?? "";
+  const me = state?.participants.find((p) => p.id === stored?.participantId);
+  const hasPhoto = Boolean(me?.photoUrl);
 
   useEffect(() => {
-    if (assignedSlot !== null && !isHost) {
+    if (assignedSlot !== null && !hasPhoto && !isHost) {
       navigate(`/party/${code}/camera`, { replace: true });
     }
-  }, [assignedSlot, isHost, code, navigate]);
+  }, [assignedSlot, hasPhoto, isHost, code, navigate]);
 
   async function handleThemeChange(theme: ThemeKey, customHue?: number) {
     if (!stored) return;
@@ -31,20 +34,34 @@ export function LobbyPage() {
     });
   }
 
+  async function assignHostToFirstSlot() {
+    if (!stored || !state) return;
+    const free = state.session.layout.slots.find((s) => !s.assignedTo);
+    if (free === undefined) return;
+    await api.assignSlot(stored.sessionId, stored.wsToken, {
+      participantId: stored.participantId,
+      slotIndex: free.index,
+    });
+    await refresh();
+    navigate(`/party/${code}/camera`);
+  }
+
   if (sessionError) {
     return (
-      <div className={styles.loading}>
+      <motion.div className={styles.loading}>
         <p>{sessionError}</p>
         <Link to="/join">
           <Button variant="secondary">Join a party</Button>
         </Link>
-      </div>
+      </motion.div>
     );
   }
 
   if (loading || !state) {
     return <p className={styles.loading}>Loading…</p>;
   }
+
+  const slotsFull = state.session.layout.slots.every((s) => s.assignedTo);
 
   return (
     <div className={styles.page}>
@@ -63,7 +80,10 @@ export function LobbyPage() {
           <Button
             variant="secondary"
             onClick={() =>
-              navigator.share({ title: "PassAndPic", text: `Join my party: ${code}` })
+              navigator.share({
+                title: "PhotoSocial",
+                text: `Join my party: ${code}`,
+              })
             }
           >
             {t("shareCode")}
@@ -82,9 +102,42 @@ export function LobbyPage() {
             customHue={state.session.customHue}
             onChange={handleThemeChange}
           />
-          <Link to={`/party/${code}/assign`}>
-            <Button fullWidth>{t("assignSlots")}</Button>
+          <Link
+            to={`/party/${code}/assign`}
+            className={styles.hostAssignLink}
+          >
+            <Button variant="secondary" fullWidth>
+              {t("assignSlots")}
+            </Button>
           </Link>
+        </section>
+      )}
+
+      {isHost && (
+        <section className={styles.hostJoin}>
+          <p className={styles.hostHint}>{t("hostCollageHint")}</p>
+          {assignedSlot === null ? (
+            slotsFull ? (
+              <p className={styles.hostHint}>{t("waitingForAssignment")}</p>
+            ) : (
+              <>
+                <Button fullWidth onClick={() => void assignHostToFirstSlot()}>
+                  {t("addYourselfToCollage")}
+                </Button>
+                <Link to={`/party/${code}/assign`} className={styles.linkBtn}>
+                  <Button variant="ghost" fullWidth>
+                    {t("assignSlots")}
+                  </Button>
+                </Link>
+              </>
+            )
+          ) : (
+            <Link to={`/party/${code}/camera`}>
+              <Button fullWidth>
+                {hasPhoto ? t("retakeMyPhoto") : t("takeMyPhoto")}
+              </Button>
+            </Link>
+          )}
         </section>
       )}
 
@@ -96,6 +149,7 @@ export function LobbyPage() {
               {p.displayName}
               {p.id === state.session.hostId && " (host)"}
               {p.assignedSlot !== null && ` · Slot ${p.assignedSlot + 1}`}
+              {p.photoUrl && " · Photo in"}
             </li>
           ))}
         </ul>

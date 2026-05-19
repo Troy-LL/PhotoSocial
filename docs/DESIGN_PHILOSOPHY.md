@@ -1,4 +1,4 @@
-# DESIGN PHILOSOPHY — PassAndPic Photobooth
+# DESIGN PHILOSOPHY — PhotoSocial Photobooth
 
 > *"Every picture is a moment shared. Every collage is a memory made together."*
 
@@ -6,7 +6,7 @@
 
 ## 1. Core Philosophy
 
-PassAndPic is built on one central belief: **connection should feel effortless, and memories should feel beautiful.** The product exists in the emotional space between togetherness and distance — people who are not in the same room but want to feel like they are. The design must honor that.
+PhotoSocial is built on one central belief: **connection should feel effortless, and memories should feel beautiful.** The product exists in the emotional space between togetherness and distance — people who are not in the same room but want to feel like they are. The design must honor that.
 
 We lead with **warmth, clarity, and delight**. Nothing should feel cold, technical, or intimidating. A grandparent and a teenager should both feel at home the moment they open the app.
 
@@ -16,7 +16,7 @@ We lead with **warmth, clarity, and delight**. Nothing should feel cold, technic
 
 ### 2.1 Default Aesthetic — Clean White / Blank Canvas
 
-The default state of PassAndPic is a **clean white canvas** — intentionally blank, like a fresh photo album or an empty pinboard waiting to be filled. This is not emptiness; it is *potential*.
+The default state of PhotoSocial is a **clean white canvas** — intentionally blank, like a fresh photo album or an empty pinboard waiting to be filled. This is not emptiness; it is *potential*.
 
 **Psychological intent:**
 - White communicates openness, purity, and creative freedom.
@@ -62,7 +62,7 @@ Themes are not mere color swaps. Each theme carries its own **emotional mood** a
 
 ### 3.1 Mobile-First, Desktop-Enhanced
 
-PassAndPic is primarily used on phones — in kitchens, at parties, in bedrooms, at weddings. The mobile experience is the *real* experience. Desktop is an enhancement layer, not the baseline.
+PhotoSocial is primarily used on phones — in kitchens, at parties, in bedrooms, at weddings. The mobile experience is the *real* experience. Desktop is an enhancement layer, not the baseline.
 
 - **Mobile:** Full-bleed layouts, large tap targets (minimum `48x48px`), thumb-zone-optimized actions, bottom navigation bar
 - **Tablet:** Two-column collage preview with side panel
@@ -140,7 +140,7 @@ Typography carries the brand's warmth and clarity.
 
 ## 7. Accessibility
 
-Beauty and accessibility are not in conflict. PassAndPic is designed for everyone.
+Beauty and accessibility are not in conflict. PhotoSocial is designed for everyone.
 
 - **Color contrast:** Minimum WCAG AA (4.5:1 for text, 3:1 for UI components) across all themes
 - **Touch targets:** Minimum `48x48px` on all interactive elements
@@ -153,7 +153,7 @@ Beauty and accessibility are not in conflict. PassAndPic is designed for everyon
 
 ## 8. Emotional Design Goals
 
-At every touchpoint, PassAndPic should make users feel:
+At every touchpoint, PhotoSocial should make users feel:
 
 1. **Safe** — "I know exactly what to do next."
 2. **Delighted** — "Oh, that's a nice little touch."
@@ -162,4 +162,4 @@ At every touchpoint, PassAndPic should make users feel:
 
 ---
 
-*This document governs aesthetic and experiential decisions across the PassAndPic product. Revisit and evolve it as the product grows.*
+*This document governs aesthetic and experiential decisions across the PhotoSocial product. Revisit and evolve it as the product grows.*

@@ -5,15 +5,16 @@
   justify-content: center;
   height: 100%;
   padding: 12px;
-  color: var(--color-text-secondary);
+  color: var(--layout-thumb-cell-fg, var(--color-text-secondary));
 }
 
 .avatar {
   width: 48px;
   height: 48px;
   border-radius: 50%;
-  background: var(--color-surface);
-  border: 1px dashed var(--color-border);
+  background: color-mix(in srgb, var(--layout-thumb-frame) 55%, var(--color-surface-raised));
+  border: 1px dashed color-mix(in srgb, var(--color-border) 80%, var(--layout-thumb-cell-fg));
+  color: var(--layout-thumb-cell-fg, var(--color-text-primary));
   display: flex;
   align-items: center;
   justify-content: center;

@@ -34,7 +34,7 @@
   flex-direction: column;
   gap: 12px;
   max-width: 320px;
-  margin: 0 auto;
+  margin: 0 auto 8px;
 }
 
 .ctas a {
@@ -52,6 +52,14 @@
   width: 24px;
   height: 24px;
   border-radius: 50%;
+  border: 2px solid transparent;
+  padding: 0;
+  cursor: pointer;
+}
+
+.themeDot.active {
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 2px var(--color-bg);
 }
 
 .themeDot.snow { background: #fff; border: 1px solid #e8e8e8; }

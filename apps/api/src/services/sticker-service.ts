@@ -1,4 +1,4 @@
-import type { Sticker, StickerScope } from "@passandpic/shared";
+import type { Sticker, StickerScope } from "@photosocial/shared";
 import { v4 as uuid } from "uuid";
 import * as store from "../store/session-store.js";
 

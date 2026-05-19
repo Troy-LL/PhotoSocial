@@ -2,18 +2,105 @@
   position: relative;
   display: flex;
   flex-direction: column;
-  min-height: 60dvh;
+  min-height: 0;
   border-radius: var(--radius-card);
   overflow: hidden;
+  background: var(--color-bg);
+}
+
+.wrap > .flash {
+  z-index: 20;
+}
+
+/* —— Full-screen fallback (no layout) —— */
+.viewer {
+  position: relative;
+  flex: 1;
+  display: flex;
+  min-height: 50dvh;
   background: #000;
 }
 
-.video,
-.preview {
+.viewer .video,
+.viewer .preview {
   width: 100%;
+  height: 100%;
   flex: 1;
   object-fit: cover;
   min-height: 50dvh;
+}
+
+/* —— Strip booth: camera inside 2×6 collage —— */
+.stripStage {
+  position: relative;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px 16px;
+  min-height: 280px;
+  background: color-mix(in srgb, var(--color-bg) 92%, #000);
+}
+
+.wrap > .countdown,
+.wrap > .flash {
+  position: absolute;
+  inset: 0;
+  z-index: 15;
+}
+
+.strip {
+  display: grid;
+  gap: 3px;
+  padding: 4px;
+  box-sizing: border-box;
+  background: var(--layout-thumb-frame, var(--color-surface));
+  border: 2px solid var(--camera-frame-border, var(--color-border));
+  border-radius: 6px;
+  box-shadow: var(--shadow-card);
+  max-height: min(72dvh, 520px);
+}
+
+.stripVertical {
+  width: min(200px, 70vw);
+  aspect-ratio: 2 / 6;
+}
+
+.stripHorizontal {
+  width: min(100%, 360px);
+  aspect-ratio: 6 / 2;
+}
+
+.emptySlot {
+  background: var(--layout-thumb-cell, rgba(0, 0, 0, 0.35));
+  border-radius: 2px;
+  min-width: 0;
+  min-height: 0;
+}
+
+.liveSlot {
+  position: relative;
+  overflow: hidden;
+  border-radius: 2px;
+  outline: 2px solid var(--camera-frame-active, #fff);
+  outline-offset: -1px;
+  min-width: 0;
+  min-height: 0;
+  background: #000;
+}
+
+.slotMedia {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.slotLoading {
+  width: 100%;
+  height: 100%;
+  background: #1a1a1a;
 }
 
 .flash {
@@ -31,23 +118,31 @@
 }
 
 .countdown {
-  position: absolute;
-  inset: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 5rem;
+  font-size: 4rem;
   font-family: var(--font-display);
   color: #fff;
   text-shadow: 0 2px 20px rgba(0, 0, 0, 0.5);
-  z-index: 15;
   pointer-events: none;
+}
+
+.permissionBanner {
+  margin: 0 0 12px;
+  font-size: 0.875rem;
+  color: var(--color-text-secondary);
+  line-height: 1.4;
 }
 
 .controls {
   padding: 16px;
   background: var(--color-surface-raised);
   border-top: 1px solid var(--color-border);
+}
+
+.controls > button:last-child {
+  margin-top: 8px;
 }
 
 .filterRow {

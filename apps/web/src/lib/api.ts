@@ -1,4 +1,4 @@
-import type { ApiResponse } from "@passandpic/shared";
+import type { ApiResponse } from "@photosocial/shared";
 
 const API_BASE = "/api";
 
@@ -48,7 +48,7 @@ export const api = {
     }>("/sessions/join", { method: "POST", body: JSON.stringify(body) }),
 
   getSessionState: (sessionId: string, token: string) =>
-    request<import("@passandpic/shared").SessionState>(
+    request<import("@photosocial/shared").SessionState>(
       `/sessions/${sessionId}`,
       { headers: authHeaders(token) }
     ),

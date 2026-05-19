@@ -1,4 +1,4 @@
-# SPEC.md — PassAndPic Photobooth Web App
+# SPEC.md — PhotoSocial Photobooth Web App
 
 > *A remote-friendly, pass-and-shoot photobooth collage experience.*
 
@@ -6,7 +6,7 @@
 
 ## 1. Product Overview
 
-**PassAndPic** is a web-based photobooth application designed for groups of people who are not physically together. Participants join a shared session using a simple **Party Code**, take photos on their own devices, and collaboratively build a photo collage that the host manages and assigns.
+**PhotoSocial** is a web-based photobooth application designed for groups of people who are not physically together. Participants join a shared session using a simple **Party Code**, take photos on their own devices, and collaboratively build a photo collage that the host manages and assigns.
 
 **Tagline:** *Everyone's camera. One shared memory.*
 
@@ -285,4 +285,4 @@ SlotDefinition
 
 ---
 
-*This spec governs v1 of PassAndPic. Items marked v2+ are tracked in the product backlog.*
+*This spec governs v1 of PhotoSocial. Items marked v2+ are tracked in the product backlog.*

@@ -1,4 +1,4 @@
-const KEY = "passandpic_device_id";
+const KEY = "PhotoSocial_device_id";
 
 export function getDeviceId(): string {
   let id = localStorage.getItem(KEY);

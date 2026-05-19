@@ -15,6 +15,14 @@
   --space-page: 24px;
   --touch-min: 48px;
   --transition-theme: 300ms ease-in-out;
+  --layout-thumb-frame: var(--color-surface);
+  --layout-thumb-cell: var(--color-text-primary);
+  --layout-thumb-cell-fg: var(--color-text-secondary);
+  --camera-frame-border: color-mix(in srgb, #fff 88%, var(--color-border));
+  --camera-frame-active: #fff;
+  --camera-frame-scrim: rgba(0, 0, 0, 0.42);
+  --camera-frame-inactive: rgba(0, 0, 0, 0.28);
+  --camera-frame-slot-dim: rgba(0, 0, 0, 0.45);
 }
 
 *,

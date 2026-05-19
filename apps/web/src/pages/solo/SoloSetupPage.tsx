@@ -8,18 +8,16 @@ import {
   type LayoutPreset,
   type ThemeKey,
 } from "@photosocial/shared";
-import { api } from "../lib/api";
-import { getDeviceId } from "../lib/device-id";
-import { saveSession } from "../lib/session-storage";
-import { LayoutThumbnail } from "../features/collage/LayoutThumbnail";
-import { ThemePicker } from "../features/themes/ThemePicker";
+import { LayoutThumbnail } from "../../features/collage/LayoutThumbnail";
+import { ThemePicker } from "../../features/themes/ThemePicker";
+import { useSolo } from "../../context/SoloContext";
 import {
   applyThemePreference,
   getThemePreference,
   saveThemePreference,
-} from "../lib/theme-preference";
-import { Button } from "../components/Button";
-import styles from "./CreatePage.module.css";
+} from "../../lib/theme-preference";
+import { Button } from "../../components/Button";
+import styles from "../CreatePage.module.css";
 
 function LayoutPicker({
   presets,
@@ -51,17 +49,15 @@ function LayoutPicker({
   );
 }
 
-export function CreatePage() {
+export function SoloSetupPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const { startSession } = useSolo();
   const [layout, setLayout] = useState<LayoutPreset>("strip4");
   const [theme, setTheme] = useState<ThemeKey>(() => getThemePreference().theme);
   const [customHue, setCustomHue] = useState(
     () => getThemePreference().customHue ?? 200
   );
-  const [hostName, setHostName] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
 
   useEffect(() => {
     applyThemePreference({
@@ -70,59 +66,21 @@ export function CreatePage() {
     });
   }, [theme, customHue]);
 
-  async function handleCreate() {
-    if (!hostName.trim()) {
-      setError("Enter your name");
-      return;
-    }
-    setLoading(true);
-    setError("");
-
-    applyThemePreference({
+  function handleStart() {
+    const pref = {
       theme,
       customHue: theme === "custom" ? customHue : undefined,
-    });
-
-    const res = await api.createSession({
-      hostDeviceId: getDeviceId(),
-      hostName: hostName.trim(),
-      layout,
-      theme,
-      customHue: theme === "custom" ? customHue : undefined,
-    });
-
-    setLoading(false);
-    if (!res.success) {
-      setError(res.error.message);
-      return;
-    }
-
-    saveSession({
-      sessionId: res.data.sessionId,
-      partyCode: res.data.partyCode,
-      participantId: res.data.participantId,
-      wsToken: res.data.wsToken,
-      isHost: true,
-      displayName: hostName.trim(),
-    });
-
-    navigate(`/party/${res.data.partyCode}/lobby`);
+    };
+    saveThemePreference(pref);
+    applyThemePreference(pref);
+    startSession(layout, theme, theme === "custom" ? customHue : undefined);
+    navigate("/solo/camera");
   }
 
   return (
     <div className={styles.page}>
-      <h1>{t("createParty")}</h1>
-
-      <label className={styles.label}>
-        {t("yourName")}
-        <input
-          value={hostName}
-          onChange={(e) => setHostName(e.target.value)}
-          placeholder={t("displayNamePlaceholder")}
-          maxLength={24}
-          className={styles.input}
-        />
-      </label>
+      <h1>{t("soloBooth")}</h1>
+      <p className={styles.layoutGroupLabel}>{t("soloBoothHint")}</p>
 
       <section>
         <h2>{t("chooseLayout")}</h2>
@@ -159,10 +117,8 @@ export function CreatePage() {
         />
       </section>
 
-      {error && <p className={styles.error}>{error}</p>}
-
-      <Button fullWidth onClick={handleCreate} disabled={loading}>
-        {loading ? "…" : t("createParty")}
+      <Button fullWidth onClick={handleStart}>
+        {t("soloStart")}
       </Button>
     </div>
   );

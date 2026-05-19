@@ -19,7 +19,7 @@ app.use(
   })
 );
 
-app.get("/health", (c) => c.json({ ok: true, service: "passandpic-api" }));
+app.get("/health", (c) => c.json({ ok: true, service: "PhotoSocial-api" }));
 
 app.route("/api/sessions", sessionsRoutes);
 
@@ -36,4 +36,4 @@ runExpiryScheduler((sessionId) => {
   broadcast(sessionId, "SESSION_EXPIRED", {});
 });
 
-console.log(`PassAndPic API listening on http://localhost:${config.port}`);
+console.log(`PhotoSocial API listening on http://localhost:${config.port}`);

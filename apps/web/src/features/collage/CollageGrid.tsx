@@ -1,5 +1,5 @@
 import { useDroppable } from "@dnd-kit/core";
-import type { SessionState } from "@passandpic/shared";
+import { getLayoutPresetMeta, type SessionState } from "@photosocial/shared";
 import { motion } from "motion/react";
 import { PlaceholderTile } from "./PlaceholderTile";
 import { StickerLayer } from "../stickers/StickerLayer";
@@ -54,13 +54,15 @@ export function CollageGrid({
   droppableSlots = false,
 }: CollageGridProps) {
   const { session, collage } = state;
-  const { rows, cols, slots } = session.layout;
+  const { rows, cols, slots, preset } = session.layout;
+  const meta = getLayoutPresetMeta(preset);
 
   return (
     <div
       id={id}
-      className={styles.grid}
+      className={`${styles.grid} ${meta.orientation === "vertical" ? styles.vertical : styles.horizontal}`}
       style={{
+        aspectRatio: meta.aspectRatio,
         gridTemplateColumns: `repeat(${cols}, 1fr)`,
         gridTemplateRows: `repeat(${rows}, 1fr)`,
       }}
@@ -79,8 +81,8 @@ export function CollageGrid({
             selected={selectedSlot === slotDef.index}
             onClick={() => onSlotClick?.(slotDef.index)}
             style={{
-              gridRow: `span ${slotDef.rowSpan}`,
-              gridColumn: `span ${slotDef.colSpan}`,
+              gridRow: `${slotDef.row + 1} / span ${slotDef.rowSpan}`,
+              gridColumn: `${slotDef.col + 1} / span ${slotDef.colSpan}`,
             }}
           >
             {hasPhoto ? (

@@ -1,4 +1,4 @@
-# PassAndPic
+# PhotoSocial
 
 Remote-friendly, pass-and-shoot photobooth collage web app.
 
@@ -10,7 +10,7 @@ Requires Node 20+ and [pnpm](https://pnpm.io).
 
 ```bash
 pnpm install
-pnpm --filter @passandpic/shared build
+pnpm --filter @photosocial/shared build
 pnpm dev
 ```
 
