@@ -3,12 +3,16 @@ import type * as Party from "partykit/server";
 /** CORS for browser clients (Vercel, local dev, custom domains). */
 
 const LOCAL_ORIGIN = /^http:\/\/localhost(:\d+)?$/;
-const VERCEL_ORIGIN = /^https:\/\/[\w.-]+\.vercel\.app$/;
+const VERCEL_ORIGIN = /^https:\/\/[\w.-]+\.vercel\.app$/i;
 
-function isAllowedOrigin(origin: string): boolean {
-  if (LOCAL_ORIGIN.test(origin) || VERCEL_ORIGIN.test(origin)) {
-    return true;
-  }
+const BUILTIN_ORIGINS = new Set([
+  "https://photosocially.vercel.app",
+]);
+
+function isAllowedOrigin(origin: string | null): origin is string {
+  if (!origin) return false;
+  if (BUILTIN_ORIGINS.has(origin)) return true;
+  if (LOCAL_ORIGIN.test(origin) || VERCEL_ORIGIN.test(origin)) return true;
   const extra = process.env.CORS_ORIGIN?.split(",").map((s) => s.trim()) ?? [];
   return extra.includes(origin);
 }
@@ -16,12 +20,15 @@ function isAllowedOrigin(origin: string): boolean {
 export function corsHeaders(request: Party.Request): Headers {
   const headers = new Headers();
   const origin = request.headers.get("Origin");
-  if (origin && isAllowedOrigin(origin)) {
+  if (isAllowedOrigin(origin)) {
     headers.set("Access-Control-Allow-Origin", origin);
     headers.set("Vary", "Origin");
   }
   headers.set("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-  headers.set("Access-Control-Allow-Headers", "Authorization, Content-Type");
+  headers.set(
+    "Access-Control-Allow-Headers",
+    "Authorization, Content-Type, Accept"
+  );
   headers.set("Access-Control-Max-Age", "86400");
   return headers;
 }
@@ -48,6 +55,20 @@ export async function withCorsHandler(
 ): Promise<Response> {
   const preflight = handleCorsPreflight(request);
   if (preflight) return preflight;
-  const response = await handler(request);
-  return withCors(request, response);
+  try {
+    const response = await handler(request);
+    return withCors(request, response);
+  } catch (error) {
+    console.error("[cors] request handler error", error);
+    return withCors(
+      request,
+      Response.json(
+        {
+          success: false,
+          error: { code: "INTERNAL_ERROR", message: "Request failed" },
+        },
+        { status: 500 }
+      )
+    );
+  }
 }

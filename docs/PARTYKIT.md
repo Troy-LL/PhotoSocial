@@ -65,7 +65,9 @@ No `https://`, no trailing slash.
 
 Commit and redeploy Vercel. **No environment variables** are required in the Vercel dashboard.
 
-**CORS:** Production Vercel URLs (`*.vercel.app`) are allowed automatically. For a custom domain, add `CORS_ORIGIN=https://your-domain.com` in the PartyKit dashboard.
+**CORS:** `https://photosocially.vercel.app` and `*.vercel.app` are allowed automatically. For a custom domain, add `CORS_ORIGIN=https://your-domain.com` in the PartyKit dashboard (Settings → Environment variables).
+
+If the browser shows a CORS error on **photo upload** but other API calls work, the request body was probably too large (edge `400` without CORS headers). Redeploy the latest web + party packages; photos are compressed before upload.
 
 ## 6. Local development
 
