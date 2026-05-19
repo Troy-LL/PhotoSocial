@@ -1,0 +1,12 @@
+.page h1 {
+  margin-bottom: 8px;
+}
+
+.progress {
+  color: var(--color-text-secondary);
+  margin-bottom: 24px;
+}
+
+.page > * + * {
+  margin-top: 16px;
+}

@@ -1,0 +1,38 @@
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+}
+
+.swatch {
+  width: var(--touch-min);
+  height: var(--touch-min);
+  border-radius: 50%;
+  border: 2px solid transparent;
+  padding: 0;
+  cursor: pointer;
+}
+
+.swatch.active {
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 2px var(--color-bg);
+}
+
+.snow { background: #fff; border: 1px solid var(--color-border); }
+.midnight { background: #1a2744; }
+.petal { background: #f9d9e3; }
+.slate { background: #2d3748; }
+.citrus { background: #fff3cd; }
+.custom {
+  background: conic-gradient(red, yellow, lime, aqua, blue, magenta, red);
+}
+
+.hueLabel {
+  flex: 1;
+  min-width: 120px;
+}
+
+.hue {
+  width: 100%;
+}

@@ -1,0 +1,41 @@
+.panel {
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
+  padding: 16px;
+  max-height: 40vh;
+  overflow-y: auto;
+}
+
+.title {
+  font-size: 0.875rem;
+  font-family: var(--font-body);
+  margin: 0 0 12px;
+  color: var(--color-text-secondary);
+}
+
+.packLabel {
+  font-size: 0.75rem;
+  color: var(--color-text-secondary);
+  margin: 8px 0 4px;
+}
+
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.stickerBtn {
+  min-width: var(--touch-min);
+  min-height: var(--touch-min);
+  font-size: 1.5rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-btn);
+  background: var(--color-bg);
+  cursor: pointer;
+}
+
+.stickerBtn:focus-visible {
+  outline: 2px solid var(--color-accent);
+}

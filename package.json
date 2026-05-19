@@ -1,0 +1,21 @@
+{
+  "name": "passandpic",
+  "private": true,
+  "scripts": {
+    "dev": "npx pnpm@9.15.0 -r --parallel run dev",
+    "build": "npx pnpm@9.15.0 -r run build",
+    "typecheck": "npx pnpm@9.15.0 -r run typecheck",
+    "test:e2e": "playwright test",
+    "lint": "eslint ."
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.49.0",
+    "@types/node": "^22.10.0",
+    "concurrently": "^9.1.0",
+    "typescript": "^5.7.2"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "packageManager": "pnpm@9.15.0"
+}

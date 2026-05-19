@@ -1,0 +1,42 @@
+.page h1 {
+  margin-bottom: 24px;
+}
+
+.page > * + * {
+  margin-top: 16px;
+}
+
+.emailField {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
+  padding: 16px;
+  margin: 0;
+}
+
+.emailField legend {
+  font-weight: 600;
+  padding: 0 8px;
+}
+
+.emailInput {
+  width: 100%;
+  min-height: var(--touch-min);
+  padding: 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-btn);
+  margin-bottom: 12px;
+}
+
+.consent {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  font-size: 0.875rem;
+  margin-bottom: 12px;
+  cursor: pointer;
+}
+
+.error {
+  color: #c0392b;
+  font-size: 0.875rem;
+}

@@ -1,0 +1,60 @@
+.page {
+  text-align: center;
+  padding-top: 24px;
+}
+
+.hero h1 {
+  font-size: clamp(2rem, 8vw, 3rem);
+}
+
+.tagline {
+  color: var(--color-text-secondary);
+  font-size: 1.125rem;
+  margin-bottom: 32px;
+}
+
+.collagePreview {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  max-width: 200px;
+  margin: 0 auto 32px;
+  aspect-ratio: 1;
+}
+
+.tile {
+  background: var(--color-surface);
+  border-radius: 12px;
+  border: 1px solid var(--color-border);
+  min-height: 60px;
+}
+
+.ctas {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-width: 320px;
+  margin: 0 auto;
+}
+
+.ctas a {
+  text-decoration: none;
+}
+
+.themeCarousel {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 48px;
+}
+
+.themeDot {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+}
+
+.themeDot.snow { background: #fff; border: 1px solid #e8e8e8; }
+.themeDot.petal { background: #f9d9e3; }
+.themeDot.midnight { background: #1a2744; }
+.themeDot.citrus { background: #fff3cd; }
