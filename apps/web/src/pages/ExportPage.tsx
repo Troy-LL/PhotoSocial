@@ -67,9 +67,7 @@ export function ExportPage() {
         </div>
       )}
 
-      {state.session.finalCollageExpiresAt && (
-        <p className={styles.hint}>{t("collageDownloadWindow")}</p>
-      )}
+      <p className={styles.hint}>{t("collageDownloadHint")}</p>
 
       <Button fullWidth onClick={downloadCollage}>
         {t("download")}

@@ -10,11 +10,10 @@
   },
   "dependencies": {
     "@photosocial/shared": "workspace:*",
-    "jsonwebtoken": "^9.0.2",
+    "jose": "^5.9.6",
     "partykit": "^0.0.115"
   },
   "devDependencies": {
-    "@types/jsonwebtoken": "^9.0.7",
     "typescript": "^5.7.2"
   }
 }

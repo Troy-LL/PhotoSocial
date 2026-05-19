@@ -31,17 +31,6 @@ export default defineConfig({
       },
     },
     {
-      command: "pnpm --filter @photosocial/api dev",
-      url: "http://localhost:3001/health",
-      reuseExistingServer: !process.env.CI,
-      timeout: 120000,
-      env: {
-        JWT_SECRET: "test-secret",
-        PARTYKIT_HOST: "http://127.0.0.1:1999",
-        PARTYKIT_BROADCAST_SECRET: "dev-party-broadcast-secret",
-      },
-    },
-    {
       command: "pnpm --filter @photosocial/web dev",
       url: "http://localhost:5173",
       reuseExistingServer: !process.env.CI,

@@ -1,51 +1,62 @@
 import type * as Party from "partykit/server";
-import type { WsEnvelope, WsEventType } from "@photosocial/shared";
-import jwt from "jsonwebtoken";
+import type { LayoutPreset, ThemeKey, WsEventType } from "@photosocial/shared";
+import {
+  assignSlotSchema,
+  clearSlotPhotoSchema,
+  setThemeSchema,
+} from "@photosocial/shared";
+import { err, jsonResponse, ok } from "./lib/api-response.js";
+import { broadcast } from "./lib/broadcast.js";
+import {
+  signWsToken,
+  verifyWsToken,
+  type WsTokenPayload,
+} from "./lib/jwt.js";
+import {
+  assignSlot,
+  clearSlotPhoto,
+  createRoomState,
+  joinParticipant,
+  lockSession,
+  setTheme,
+  submitPhoto,
+  toSessionState,
+  type RoomState,
+} from "./lib/session-state.js";
 
-interface WsTokenPayload {
-  sessionId: string;
-  participantId: string;
-  deviceId: string;
-  isHost: boolean;
+const STATE_KEY = "state";
+
+async function loadState(room: Party.Room): Promise<RoomState | null> {
+  const state = await room.storage.get<RoomState>(STATE_KEY);
+  return state ?? null;
 }
 
-const VALID_EVENTS = new Set<WsEventType>([
-  "PARTICIPANT_JOINED",
-  "PARTICIPANT_LEFT",
-  "SLOT_ASSIGNED",
-  "SLOT_REASSIGNED",
-  "PHOTO_SUBMITTED",
-  "PHOTO_CLEARED",
-  "STICKER_PLACED",
-  "STICKER_UPDATED",
-  "STICKER_DELETED",
-  "THEME_CHANGED",
-  "SESSION_LOCKED",
-  "SESSION_EXPIRED",
-  "PING",
-]);
+async function saveState(room: Party.Room, state: RoomState): Promise<void> {
+  await room.storage.put(STATE_KEY, state);
+}
 
-function verifyToken(token: string): WsTokenPayload | null {
-  const secret = process.env.JWT_SECRET;
-  if (!secret) return null;
-  try {
-    return jwt.verify(token, secret) as WsTokenPayload;
-  } catch {
-    return null;
-  }
+async function authFromRequest(
+  req: Party.Request,
+  roomId: string
+): Promise<WsTokenPayload | null> {
+  const header = req.headers.get("authorization");
+  const token = header?.replace(/^Bearer\s+/i, "");
+  if (!token) return null;
+  const payload = await verifyWsToken(token);
+  if (!payload || payload.sessionId !== roomId) return null;
+  return payload;
 }
 
 export default class SessionParty implements Party.Server {
   constructor(readonly room: Party.Room) {}
 
-  onConnect(conn: Party.Connection, ctx: Party.ConnectionContext) {
-    const url = new URL(ctx.request.url);
-    const token = url.searchParams.get("token");
+  async onConnect(conn: Party.Connection, ctx: Party.ConnectionContext) {
+    const token = new URL(ctx.request.url).searchParams.get("token");
     if (!token) {
       conn.close(4001, "Authentication required");
       return;
     }
-    const payload = verifyToken(token);
+    const payload = await verifyWsToken(token);
     if (!payload || payload.sessionId !== this.room.id) {
       conn.close(4001, "Invalid token");
       return;
@@ -54,39 +65,239 @@ export default class SessionParty implements Party.Server {
   }
 
   onMessage() {
-    /* v1: API is source of truth; clients only receive broadcasts */
+    /* clients receive broadcasts only */
   }
 
   async onRequest(req: Party.Request) {
+    if (req.method === "GET") {
+      return this.handleGet(req);
+    }
     if (req.method !== "POST") {
       return new Response("Method not allowed", { status: 405 });
     }
 
-    const secret = process.env.PARTYKIT_BROADCAST_SECRET;
-    const auth = req.headers.get("Authorization");
-    if (!secret || auth !== `Bearer ${secret}`) {
-      return new Response("Unauthorized", { status: 401 });
-    }
-
-    let body: { type?: string; payload?: unknown };
+    let body: Record<string, unknown>;
     try {
-      body = (await req.json()) as { type?: string; payload?: unknown };
+      body = (await req.json()) as Record<string, unknown>;
     } catch {
-      return new Response("Invalid JSON", { status: 400 });
+      return jsonResponse(err("VALIDATION_ERROR", "Invalid JSON"), 400);
     }
 
-    if (!body.type || !VALID_EVENTS.has(body.type as WsEventType)) {
-      return new Response("Invalid event type", { status: 400 });
+    const action = body.action as string;
+
+    if (action === "init") {
+      return this.handleInit(body);
+    }
+    if (action === "join") {
+      return this.handleJoin(body);
+    }
+    if (action === "broadcast") {
+      return this.handleInternalBroadcast(body);
     }
 
-    const envelope: WsEnvelope = {
-      type: body.type as WsEventType,
-      sessionId: this.room.id,
-      timestamp: new Date().toISOString(),
-      payload: body.payload ?? {},
-    };
+    const auth = await authFromRequest(req, this.room.id);
+    if (!auth) {
+      return jsonResponse(err("UNAUTHORIZED", "Invalid token"), 401);
+    }
 
-    this.room.broadcast(JSON.stringify(envelope));
-    return new Response("ok", { status: 200 });
+    const state = await loadState(this.room);
+    if (!state) {
+      return jsonResponse(err("SESSION_NOT_FOUND", "Not found"), 404);
+    }
+
+    switch (action) {
+      case "assign-slot": {
+        if (!auth.isHost) {
+          return jsonResponse(err("FORBIDDEN", "FORBIDDEN"), 400);
+        }
+        const parsed = assignSlotSchema.safeParse(body);
+        if (!parsed.success) {
+          return jsonResponse(err("VALIDATION_ERROR", parsed.error.message), 400);
+        }
+        const result = assignSlot(
+          state,
+          parsed.data.participantId,
+          parsed.data.slotIndex
+        );
+        if ("error" in result) {
+          return jsonResponse(err(result.error, result.error), 400);
+        }
+        await saveState(this.room, state);
+        broadcast(this.room, this.room.id, "SLOT_ASSIGNED", result);
+        return jsonResponse(ok(result));
+      }
+      case "theme": {
+        if (!auth.isHost) {
+          return jsonResponse(err("FORBIDDEN", "FORBIDDEN"), 400);
+        }
+        const parsed = setThemeSchema.safeParse(body);
+        if (!parsed.success) {
+          return jsonResponse(err("VALIDATION_ERROR", parsed.error.message), 400);
+        }
+        const result = setTheme(
+          state,
+          parsed.data.theme,
+          parsed.data.customHue
+        );
+        await saveState(this.room, state);
+        broadcast(this.room, this.room.id, "THEME_CHANGED", result);
+        return jsonResponse(ok(result));
+      }
+      case "lock": {
+        if (!auth.isHost) {
+          return jsonResponse(err("FORBIDDEN", "FORBIDDEN"), 400);
+        }
+        lockSession(state);
+        await saveState(this.room, state);
+        const finalCollageUrl = "";
+        broadcast(this.room, this.room.id, "SESSION_LOCKED", {
+          finalCollageUrl,
+        });
+        return jsonResponse(ok({ finalCollageUrl }));
+      }
+      case "photos": {
+        const photoDataUrl = body.photoDataUrl as string | undefined;
+        const thumbDataUrl = body.thumbDataUrl as string | undefined;
+        if (!photoDataUrl || !thumbDataUrl) {
+          return jsonResponse(err("VALIDATION_ERROR", "Photo required"), 400);
+        }
+        const result = submitPhoto(
+          state,
+          auth.participantId,
+          photoDataUrl,
+          thumbDataUrl
+        );
+        if ("error" in result) {
+          return jsonResponse(err(result.error, result.error), 400);
+        }
+        await saveState(this.room, state);
+        broadcast(this.room, this.room.id, "PHOTO_SUBMITTED", result);
+        return jsonResponse(ok({ photoUrl: result.photoUrl, thumbnailUrl: result.thumbnailUrl }));
+      }
+      case "clear-photo": {
+        const parsed = clearSlotPhotoSchema.safeParse(body);
+        if (!parsed.success) {
+          return jsonResponse(err("VALIDATION_ERROR", parsed.error.message), 400);
+        }
+        const result = clearSlotPhoto(
+          state,
+          parsed.data.slotIndex,
+          auth.participantId,
+          auth.isHost
+        );
+        if ("error" in result) {
+          return jsonResponse(err(result.error, result.error), 400);
+        }
+        await saveState(this.room, state);
+        broadcast(this.room, this.room.id, "PHOTO_CLEARED", result);
+        return jsonResponse(ok(result));
+      }
+      default:
+        return jsonResponse(err("VALIDATION_ERROR", "Unknown action"), 400);
+    }
+  }
+
+  private async handleGet(req: Party.Request) {
+    const auth = await authFromRequest(req, this.room.id);
+    if (!auth) {
+      return jsonResponse(err("UNAUTHORIZED", "Invalid token"), 401);
+    }
+    const state = await loadState(this.room);
+    if (!state) {
+      return jsonResponse(err("SESSION_NOT_FOUND", "Not found"), 404);
+    }
+    return jsonResponse(ok(toSessionState(state)));
+  }
+
+  private async handleInit(body: Record<string, unknown>) {
+    const sessionId = body.sessionId as string;
+    if (sessionId !== this.room.id) {
+      return jsonResponse(err("FORBIDDEN", "Room mismatch"), 403);
+    }
+    const state = createRoomState({
+      sessionId,
+      partyCode: body.partyCode as string,
+      hostId: body.hostId as string,
+      hostDeviceId: body.hostDeviceId as string,
+      hostName: body.hostName as string,
+      layout: body.layout as LayoutPreset,
+      theme: body.theme as ThemeKey,
+      customHue: body.customHue as number | undefined,
+    });
+    await saveState(this.room, state);
+    return jsonResponse(ok({ initialized: true }));
+  }
+
+  private async handleJoin(body: Record<string, unknown>) {
+    const state = await loadState(this.room);
+    if (!state) {
+      return jsonResponse(err("SESSION_NOT_FOUND", "Not found"), 404);
+    }
+
+    const displayName = body.displayName as string;
+    const deviceId = body.deviceId as string;
+    const participantId = body.participantId as string;
+
+    const existing = state.participants.find((p) => p.deviceId === deviceId);
+    if (existing) {
+      const wsToken = await signWsToken({
+        sessionId: state.session.id,
+        participantId: existing.id,
+        deviceId,
+        isHost: existing.id === state.session.hostId,
+      });
+      return jsonResponse(
+        ok({
+          rejoined: true,
+          existingParticipantId: existing.id,
+          isHost: existing.id === state.session.hostId,
+          sessionMeta: {
+            theme: state.session.theme,
+            customHue: state.session.customHue,
+            layout: state.session.layout,
+            hostName: state.session.hostName,
+            participantCount: state.participants.length,
+            status: state.session.status,
+          },
+          wsToken,
+        })
+      );
+    }
+
+    const result = joinParticipant(state, {
+      displayName,
+      deviceId,
+      participantId,
+    });
+    if ("error" in result) {
+      return jsonResponse(err(result.error, result.error), 400);
+    }
+
+    await saveState(this.room, state);
+    return jsonResponse(
+      ok({
+        rejoined: false,
+        isHost: false,
+        sessionMeta: {
+          theme: state.session.theme,
+          customHue: state.session.customHue,
+          layout: state.session.layout,
+          hostName: state.session.hostName,
+          participantCount: state.participants.length,
+          status: state.session.status,
+        },
+      })
+    );
+  }
+
+  private handleInternalBroadcast(body: Record<string, unknown>) {
+    const secret = process.env.PARTYKIT_BROADCAST_SECRET;
+    if (!secret || body.internalSecret !== secret) {
+      return jsonResponse(err("UNAUTHORIZED", "Unauthorized"), 401);
+    }
+    const type = body.type as WsEventType;
+    const payload = body.payload ?? {};
+    broadcast(this.room, this.room.id, type, payload);
+    return jsonResponse(ok({ broadcast: true }));
   }
 }

@@ -1,12 +1,12 @@
 import type { ApiResponse } from "@photosocial/shared";
-
-const API_BASE = "/api";
+import { partykitHttpOrigin } from "./deploy-config.js";
+import { blobToJpegDataUrl } from "./image-data-url.js";
 
 async function request<T>(
   path: string,
   options: RequestInit = {}
 ): Promise<ApiResponse<T>> {
-  const res = await fetch(`${API_BASE}${path}`, {
+  const res = await fetch(`${partykitHttpOrigin()}${path}`, {
     ...options,
     headers: {
       "Content-Type": "application/json",
@@ -27,13 +27,17 @@ export const api = {
     layout: string;
     theme: string;
     customHue?: number;
-  }) => request<{
-    sessionId: string;
-    partyCode: string;
-    wsToken: string;
-    expiresAt: string;
-    participantId: string;
-  }>("/sessions", { method: "POST", body: JSON.stringify(body) }),
+  }) =>
+    request<{
+      sessionId: string;
+      partyCode: string;
+      wsToken: string;
+      expiresAt: string;
+      participantId: string;
+    }>("/parties/registry/main", {
+      method: "POST",
+      body: JSON.stringify({ action: "create", ...body }),
+    }),
 
   joinSession: (body: {
     partyCode: string;
@@ -45,12 +49,15 @@ export const api = {
       participantId: string;
       wsToken: string;
       sessionMeta: unknown;
-    }>("/sessions/join", { method: "POST", body: JSON.stringify(body) }),
+    }>("/parties/registry/main", {
+      method: "POST",
+      body: JSON.stringify({ action: "join", ...body }),
+    }),
 
   getSessionState: (sessionId: string, token: string) =>
     request<import("@photosocial/shared").SessionState>(
-      `/sessions/${sessionId}`,
-      { headers: authHeaders(token) }
+      `/parties/main/${sessionId}`,
+      { method: "GET", headers: authHeaders(token) }
     ),
 
   assignSlot: (
@@ -58,10 +65,10 @@ export const api = {
     token: string,
     body: { participantId: string; slotIndex: number }
   ) =>
-    request(`/sessions/${sessionId}/assign-slot`, {
+    request(`/parties/main/${sessionId}`, {
       method: "POST",
       headers: authHeaders(token),
-      body: JSON.stringify(body),
+      body: JSON.stringify({ action: "assign-slot", ...body }),
     }),
 
   setTheme: (
@@ -69,16 +76,17 @@ export const api = {
     token: string,
     body: { theme: string; customHue?: number }
   ) =>
-    request(`/sessions/${sessionId}/theme`, {
+    request(`/parties/main/${sessionId}`, {
       method: "POST",
       headers: authHeaders(token),
-      body: JSON.stringify(body),
+      body: JSON.stringify({ action: "theme", ...body }),
     }),
 
   lockSession: (sessionId: string, token: string) =>
-    request<{ finalCollageUrl: string }>(`/sessions/${sessionId}/lock`, {
+    request<{ finalCollageUrl: string }>(`/parties/main/${sessionId}`, {
       method: "POST",
       headers: authHeaders(token),
+      body: JSON.stringify({ action: "lock" }),
     }),
 
   clearSlotPhoto: (
@@ -86,56 +94,32 @@ export const api = {
     token: string,
     body: { slotIndex: number }
   ) =>
-    request(`/sessions/${sessionId}/clear-photo`, {
+    request(`/parties/main/${sessionId}`, {
       method: "POST",
       headers: authHeaders(token),
-      body: JSON.stringify(body),
+      body: JSON.stringify({ action: "clear-photo", ...body }),
     }),
 
   uploadPhoto: async (sessionId: string, token: string, blob: Blob) => {
-    const form = new FormData();
-    form.append("photo", blob, "photo.jpg");
-    const res = await fetch(`${API_BASE}/sessions/${sessionId}/photos`, {
-      method: "POST",
-      headers: authHeaders(token),
-      body: form,
-    });
-    return res.json() as Promise<
-      ApiResponse<{ photoUrl: string; thumbnailUrl: string }>
-    >;
+    const [photoDataUrl, thumbDataUrl] = await Promise.all([
+      blobToJpegDataUrl(blob, 1200),
+      blobToJpegDataUrl(blob, 400),
+    ]);
+    return request<{ photoUrl: string; thumbnailUrl: string }>(
+      `/parties/main/${sessionId}`,
+      {
+        method: "POST",
+        headers: authHeaders(token),
+        body: JSON.stringify({
+          action: "photos",
+          photoDataUrl,
+          thumbDataUrl,
+        }),
+      }
+    );
   },
-
-  placeSticker: (
-    sessionId: string,
-    token: string,
-    body: Record<string, unknown>
-  ) =>
-    request(`/sessions/${sessionId}/stickers`, {
-      method: "POST",
-      headers: authHeaders(token),
-      body: JSON.stringify(body),
-    }),
-
-  updateSticker: (
-    sessionId: string,
-    token: string,
-    stickerId: string,
-    body: Record<string, unknown>
-  ) =>
-    request(`/sessions/${sessionId}/stickers/${stickerId}`, {
-      method: "PATCH",
-      headers: authHeaders(token),
-      body: JSON.stringify(body),
-    }),
-
-  deleteSticker: (sessionId: string, token: string, stickerId: string) =>
-    request(`/sessions/${sessionId}/stickers/${stickerId}`, {
-      method: "DELETE",
-      headers: authHeaders(token),
-    }),
 };
 
 export function photoUrl(path: string): string {
-  if (path.startsWith("http")) return path;
   return path;
 }

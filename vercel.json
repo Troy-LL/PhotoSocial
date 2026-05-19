@@ -3,14 +3,5 @@
   "outputDirectory": "apps/web/dist",
   "installCommand": "pnpm install",
   "framework": null,
-  "rewrites": [
-    {
-      "source": "/api/:path*",
-      "destination": "https://REPLACE_WITH_YOUR_API_HOST/api/:path*"
-    },
-    {
-      "source": "/(.*)",
-      "destination": "/index.html"
-    }
-  ]
+  "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
 }

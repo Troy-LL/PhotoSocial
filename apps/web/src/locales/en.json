@@ -74,5 +74,5 @@
   "tryCameraAgain": "Try again",
   "uploadFailed": "Upload failed — tap to retry",
   "allPhotosIn": "All photos are in!",
-  "collageDownloadWindow": "Download your collage soon — the server copy is removed about an hour after the party locks."
+  "collageDownloadHint": "Tap Download to save your collage to this device."
 }

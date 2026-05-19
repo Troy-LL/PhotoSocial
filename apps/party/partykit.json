@@ -1,5 +1,8 @@
 {
   "name": "photosocial-party",
   "main": "src/session-party.ts",
-  "compatibilityDate": "2024-11-01"
+  "compatibilityDate": "2024-11-01",
+  "parties": {
+    "registry": "src/registry-party.ts"
+  }
 }
