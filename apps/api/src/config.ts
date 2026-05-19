@@ -5,6 +5,10 @@ export const config = {
   dataDir: process.env.DATA_DIR || "./data/sessions",
   sessionMaxAgeMs: 24 * 60 * 60 * 1000,
   sessionIdleMs: 2 * 60 * 60 * 1000,
+  finalCollageTtlMs: Number(process.env.FINAL_COLLAGE_TTL_MS) || 60 * 60 * 1000,
+  partykitHost: process.env.PARTYKIT_HOST || "",
+  partykitBroadcastSecret:
+    process.env.PARTYKIT_BROADCAST_SECRET || "dev-party-broadcast-secret",
   maxParticipants: 20,
   supabaseUrl: process.env.SUPABASE_URL,
   supabaseKey: process.env.SUPABASE_SERVICE_ROLE_KEY,

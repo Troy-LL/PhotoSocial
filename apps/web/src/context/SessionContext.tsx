@@ -96,7 +96,7 @@ export function SessionProvider({
       setLoading(false);
       return;
     }
-    connectWs(s.wsToken);
+    connectWs(s.sessionId, s.wsToken);
     void refresh();
   }, [stored?.wsToken, stored?.sessionId, partyCode, refresh]);
 

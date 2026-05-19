@@ -40,3 +40,16 @@
   color: #c0392b;
   font-size: 0.875rem;
 }
+
+.hint {
+  font-size: 0.875rem;
+  color: var(--color-text-muted, #666);
+  margin: 0;
+}
+
+.finalPreview {
+  width: 100%;
+  max-height: min(70vh, 640px);
+  object-fit: contain;
+  border-radius: var(--radius-card);
+}

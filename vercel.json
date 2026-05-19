@@ -1,0 +1,7 @@
+{
+  "buildCommand": "pnpm --filter @photosocial/shared build && pnpm --filter @photosocial/web build",
+  "outputDirectory": "apps/web/dist",
+  "installCommand": "pnpm install",
+  "framework": null,
+  "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
+}

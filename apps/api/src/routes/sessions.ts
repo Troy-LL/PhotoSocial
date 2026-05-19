@@ -21,7 +21,7 @@ import * as stickerService from "../services/sticker-service.js";
 import * as emailService from "../services/email-service.js";
 import { uploadToSupabase } from "../services/supabase-storage.js";
 import * as store from "../store/session-store.js";
-import { broadcast } from "../ws/broadcaster.js";
+import { broadcast } from "../lib/party-broadcast.js";
 import { getSessionDir } from "../store/session-store.js";
 
 type Variables = { auth: WsTokenPayload };
@@ -240,7 +240,9 @@ sessionRoutes.post("/lock", async (c) => {
       session.layout.rows
     );
     session.finalCollageUrl = finalCollageUrl;
+    sessionService.scheduleFinalCollageExpiry(session.id);
     store.setSession(session);
+    await sessionService.purgeSlotPhotos(session.id);
   } catch (e) {
     console.error("Collage render failed", e);
   }
@@ -407,7 +409,17 @@ sessionRoutes.post("/email", async (c) => {
   const session = store.getSession(auth.sessionId);
   if (!session) return c.json(err("SESSION_NOT_FOUND", "Not found"), 404);
 
-  let downloadUrl = session.finalCollageUrl ?? "";
+  if (!session.finalCollageUrl) {
+    return c.json(
+      err(
+        "COLLAGE_EXPIRED",
+        "The download window for this collage has ended. Save it from the export screen next time."
+      ),
+      410
+    );
+  }
+
+  let downloadUrl = session.finalCollageUrl;
   const apiBase = `http://localhost:${config.port}`;
 
   if (parsed.data.consentCloudSave) {

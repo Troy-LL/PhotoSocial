@@ -1,0 +1,20 @@
+{
+  "name": "@photosocial/party",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "partykit dev",
+    "deploy": "partykit deploy",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@photosocial/shared": "workspace:*",
+    "jsonwebtoken": "^9.0.2",
+    "partykit": "^0.0.115"
+  },
+  "devDependencies": {
+    "@types/jsonwebtoken": "^9.0.7",
+    "typescript": "^5.7.2"
+  }
+}

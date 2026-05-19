@@ -1,73 +1,76 @@
-import { io, type Socket } from "socket.io-client";
+import PartySocket from "partysocket";
 import type { WsEnvelope } from "@photosocial/shared";
 
 type EventHandler = (envelope: WsEnvelope) => void;
 
-let socket: Socket | null = null;
-let activeToken: string | null = null;
+let socket: PartySocket | null = null;
+let activeKey: string | null = null;
 let reconnecting = false;
 const handlers = new Set<EventHandler>();
 const reconnectListeners = new Set<(v: boolean) => void>();
 
-function wsUrl(): string {
-  const env = import.meta.env.VITE_WS_URL as string | undefined;
-  if (env) return env;
-  return window.location.origin;
+function partyHost(): string {
+  const env = import.meta.env.VITE_PARTYKIT_HOST as string | undefined;
+  if (env) {
+    return env.replace(/^https?:\/\//, "").replace(/\/$/, "");
+  }
+  return `${window.location.hostname}:1999`;
 }
 
-export function connectWs(token: string): Socket {
-  if (socket && activeToken === token) {
-    if (!socket.connected) socket.connect();
+export function connectWs(sessionId: string, token: string): PartySocket {
+  const key = `${sessionId}:${token}`;
+  if (socket && activeKey === key) {
     return socket;
   }
 
   if (socket) {
-    socket.removeAllListeners();
-    socket.disconnect();
+    socket.close();
     socket = null;
   }
 
-  activeToken = token;
-  socket = io(wsUrl(), {
-    path: "/socket.io",
-    auth: { token },
-    transports: ["websocket", "polling"],
-    reconnection: true,
-    reconnectionDelay: 1000,
-    reconnectionDelayMax: 10000,
+  activeKey = key;
+  socket = new PartySocket({
+    host: partyHost(),
+    room: sessionId,
+    party: "main",
+    query: { token },
   });
 
-  socket.on("connect", () => {
+  socket.addEventListener("open", () => {
     reconnecting = false;
     reconnectListeners.forEach((fn) => fn(false));
   });
 
-  socket.on("disconnect", () => {
+  socket.addEventListener("close", () => {
     setTimeout(() => {
-      if (socket && !socket.connected) {
+      if (socket && socket.readyState !== WebSocket.OPEN) {
         reconnecting = true;
         reconnectListeners.forEach((fn) => fn(true));
       }
     }, 2000);
   });
 
-  socket.on("connect_error", () => {
+  socket.addEventListener("error", () => {
     reconnecting = true;
     reconnectListeners.forEach((fn) => fn(true));
   });
 
-  socket.on("event", (envelope: WsEnvelope) => {
-    handlers.forEach((h) => h(envelope));
+  socket.addEventListener("message", (event) => {
+    try {
+      const envelope = JSON.parse(String(event.data)) as WsEnvelope;
+      handlers.forEach((h) => h(envelope));
+    } catch {
+      /* ignore malformed */
+    }
   });
 
   return socket;
 }
 
 export function disconnectWs(): void {
-  socket?.removeAllListeners();
-  socket?.disconnect();
+  socket?.close();
   socket = null;
-  activeToken = null;
+  activeKey = null;
   reconnecting = false;
 }
 

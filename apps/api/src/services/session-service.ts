@@ -6,11 +6,16 @@ import {
   type SessionState,
   type ThemeKey,
 } from "@photosocial/shared";
+import { unlink } from "node:fs/promises";
+import { join } from "node:path";
 import { v4 as uuid } from "uuid";
 import { config } from "../config.js";
 import { signWsToken } from "../lib/jwt.js";
 import * as store from "../store/session-store.js";
-import { ensureSessionDir } from "../store/session-store.js";
+import {
+  ensureSessionDir,
+  getSessionDir,
+} from "../store/session-store.js";
 
 function newExpiry(): string {
   return new Date(Date.now() + config.sessionMaxAgeMs).toISOString();
@@ -285,6 +290,42 @@ export function lockSession(sessionId: string, isHost: boolean) {
   return { session };
 }
 
+/** Remove slot photo files and clear participant URLs after final collage is rendered. */
+export async function purgeSlotPhotos(sessionId: string): Promise<void> {
+  const dir = getSessionDir(sessionId);
+  for (const p of store.getParticipants(sessionId)) {
+    const mainPath = join(dir, `${p.id}-main.jpg`);
+    const thumbPath = join(dir, `${p.id}-thumb.jpg`);
+    await Promise.all([
+      unlink(mainPath).catch(() => {}),
+      unlink(thumbPath).catch(() => {}),
+    ]);
+    p.photoUrl = null;
+    p.thumbnailUrl = null;
+    store.updateParticipant(p);
+  }
+}
+
+export function scheduleFinalCollageExpiry(sessionId: string): void {
+  const session = store.getSession(sessionId);
+  if (!session) return;
+  session.finalCollageExpiresAt = new Date(
+    Date.now() + config.finalCollageTtlMs
+  ).toISOString();
+  store.setSession(session);
+}
+
+/** Delete server final collage file; session metadata stays until full expiry. */
+export async function purgeFinalCollage(sessionId: string): Promise<void> {
+  const session = store.getSession(sessionId);
+  if (!session) return;
+  const finalPath = join(getSessionDir(sessionId), "final-collage.jpg");
+  await unlink(finalPath).catch(() => {});
+  session.finalCollageUrl = undefined;
+  session.finalCollageExpiresAt = undefined;
+  store.setSession(session);
+}
+
 export function setTheme(
   sessionId: string,
   theme: ThemeKey,
@@ -310,11 +351,21 @@ export function expireSession(sessionId: string): void {
 }
 
 export function runExpiryScheduler(
-  onExpired: (sessionId: string) => void
+  onExpired: (sessionId: string) => void,
+  onFinalCollagePurged?: (sessionId: string) => void
 ): void {
   setInterval(() => {
     const now = Date.now();
     for (const session of store.getAllSessions()) {
+      if (session.finalCollageExpiresAt) {
+        const collageExpires = new Date(session.finalCollageExpiresAt).getTime();
+        if (now > collageExpires) {
+          void purgeFinalCollage(session.id).then(() => {
+            onFinalCollagePurged?.(session.id);
+          });
+        }
+      }
+
       const expires = new Date(session.expiresAt).getTime();
       const idle = new Date(session.lastActivityAt).getTime() + config.sessionIdleMs;
       if (now > expires || now > idle) {

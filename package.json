@@ -2,7 +2,7 @@
   "name": "PhotoSocial",
   "private": true,
   "scripts": {
-    "dev": "npx pnpm@9.15.0 -r --parallel run dev",
+    "dev": "npx pnpm@9.15.0 -r --parallel --filter @photosocial/web --filter @photosocial/api --filter @photosocial/party run dev",
     "build": "npx pnpm@9.15.0 -r run build",
     "typecheck": "npx pnpm@9.15.0 -r run typecheck",
     "test:e2e": "playwright test",

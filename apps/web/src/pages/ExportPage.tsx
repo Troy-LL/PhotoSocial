@@ -74,7 +74,21 @@ export function ExportPage() {
     <div className={styles.page}>
       <h1>{t("allPhotosIn")}</h1>
 
-      <CollageGrid state={state} />
+      {finalUrl ? (
+        <img
+          src={finalUrl}
+          alt={t("collageStripPreview")}
+          className={styles.finalPreview}
+        />
+      ) : (
+        <div id="collage-export">
+          <CollageGrid state={state} />
+        </div>
+      )}
+
+      {state.session.finalCollageExpiresAt && (
+        <p className={styles.hint}>{t("collageEmailWindow")}</p>
+      )}
 
       <Button fullWidth onClick={downloadCollage}>
         {t("download")}

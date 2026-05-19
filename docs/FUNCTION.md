@@ -15,14 +15,14 @@
 │  │  Module  │  │  Renderer │  │  Panel               │ │
 │  └────┬─────┘  └─────┬─────┘  └──────────┬───────────┘ │
 │       └──────────────┼───────────────────┘             │
-│              WebSocket Client                           │
+│         PartySocket (PartyKit room per session)         │
 └──────────────────────┬──────────────────────────────────┘
-                       │ WSS
+                       │ WSS + REST
 ┌──────────────────────▼──────────────────────────────────┐
-│                  SERVER (Node.js / Bun)                 │
+│     API (Hono)                    PartyKit (rooms)      │
 │  ┌─────────────┐  ┌──────────────┐  ┌────────────────┐ │
-│  │  Session    │  │  WebSocket   │  │  Image Upload  │ │
-│  │  Manager   │  │  Broadcaster │  │  Service       │ │
+│  │  Session    │  │  Party       │  │  Image Upload  │ │
+│  │  Manager   │  │  broadcast   │  │  Service       │ │
 │  └─────────────┘  └──────────────┘  └────────────────┘ │
 │              ┌──────────────┐                           │
 │              │  Email       │                           │
@@ -57,7 +57,7 @@ Creates a new photobooth session and returns a Party Code.
 {
   sessionId: string,
   partyCode: string,          // e.g. "PINE-7842"
-  wsToken: string,            // auth token for WebSocket connection
+  wsToken: string,            // auth token for PartyKit room connection
   expiresAt: ISO8601string,
 }
 ```
@@ -66,7 +66,7 @@ Creates a new photobooth session and returns a Party Code.
 - Generates a unique Party Code using a curated word list + 4-digit number
 - Retries generation up to 5 times on collision
 - Inserts session record into DB with status `"lobby"`
-- Returns host a signed WebSocket token scoped to this session
+- Returns host a signed token scoped to this session (PartyKit + REST)
 
 ---
 
@@ -129,9 +129,11 @@ Host finalizes the collage. No further photo submissions accepted.
 
 **Behavior:**
 - Updates session status to `"locked"`
-- Broadcasts `SESSION_LOCKED` event to all participants
-- Triggers server-side collage render (composite image generation)
-- Returns `finalCollageUrl: string` — a fully rendered image on object storage
+- Renders `final-collage.jpg` on the API server (short-lived, default 1h TTL for email)
+- Deletes individual slot photo files and clears participant `photoUrl` / `thumbnailUrl`
+- Sets `finalCollageExpiresAt`; scheduler removes the final file after TTL
+- Broadcasts `SESSION_LOCKED` via PartyKit to all participants
+- Returns `finalCollageUrl: string` — API path to the final JPEG (until TTL purge)
 
 ---
 
@@ -508,7 +510,9 @@ Emails a download link to the provided address.
 
 ---
 
-## 9. WebSocket Event Reference
+## 9. Realtime Event Reference (PartyKit)
+
+Clients connect to PartyKit room `main/{sessionId}` with `?token={wsToken}`. The API posts broadcasts to the party HTTP endpoint after REST mutations. Clients receive envelopes and call `GET /sessions/:id` to refresh state.
 
 All real-time events follow this envelope:
 
@@ -524,7 +528,7 @@ All real-time events follow this envelope:
 | Event Type | Direction | Triggered By | Payload |
 |---|---|---|---|
 | `PARTICIPANT_JOINED` | Server → All | `joinSession` | `{ participantId, displayName }` |
-| `PARTICIPANT_LEFT` | Server → All | Disconnect | `{ participantId }` |
+| `PARTICIPANT_LEFT` | (deprecated) | — | Not emitted in PartyKit v1 |
 | `SLOT_ASSIGNED` | Server → All | `assignSlot` | `{ slotIndex, participantId, displayName }` |
 | `SLOT_REASSIGNED` | Server → All | `reassignSlot` | `{ slotIndex, participantId }` |
 | `PHOTO_SUBMITTED` | Server → All | `uploadPhoto` | `{ slotIndex, participantId, thumbnailUrl }` |
@@ -556,7 +560,8 @@ All API responses follow:
 |---|---|
 | Camera permission denied | Show permission guide modal with OS-specific instructions |
 | Upload fails | Retry up to 3 times with exponential backoff; show "Upload failed — tap to retry" |
-| WebSocket disconnects | Show "Reconnecting…" banner; suppress for < 2s (brief drops) |
+| PartyKit disconnects | Show "Reconnecting…" banner; suppress for < 2s (brief drops) |
+| Email after collage TTL | `COLLAGE_EXPIRED` — prompt download from export screen |
 | Session expired mid-use | Show modal: "This party has ended. Download your photo before it's gone." |
 | Invalid Party Code | Inline error with shake animation on input field |
 | Email send fails | Show error; offer direct download as fallback |
@@ -572,7 +577,7 @@ All API responses follow:
 | Photo upload round-trip | `< 3s` on 4G |
 | Collage re-render on update | `< 100ms` |
 | Sticker drag frame rate | `60fps` target, `30fps` minimum |
-| WebSocket event → UI update | `< 150ms` |
+| PartyKit event → UI update | `< 150ms` |
 
 ---
 
