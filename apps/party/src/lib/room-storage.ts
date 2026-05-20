@@ -43,8 +43,6 @@ export async function saveRoomState(room: Party.Room, state: RoomState): Promise
         throw new Error("PHOTO_TOO_LARGE");
       }
       await room.storage.put(photoKey(slot.index), payload);
-    } else {
-      await room.storage.delete(photoKey(slot.index));
     }
     slot.photoUrl = null;
     slot.thumbnailUrl = null;

@@ -1,5 +1,9 @@
 import { useDroppable } from "@dnd-kit/core";
-import { getLayoutPresetMeta, type SessionState } from "@photosocial/shared";
+import {
+  getLayoutPresetMeta,
+  slotPhotoDisplayUrl,
+  type SessionState,
+} from "@photosocial/shared";
 import { motion } from "motion/react";
 import { PlaceholderTile } from "./PlaceholderTile";
 import { SlotPhoto } from "../camera/SlotPhoto";
@@ -78,7 +82,7 @@ export function CollageGrid({
     >
       {slots.map((slotDef) => {
         const slotState = collage.slots.find((s) => s.index === slotDef.index);
-        const hasPhoto = Boolean(slotState?.photoUrl);
+        const photoSrc = slotPhotoDisplayUrl(slotState);
 
         return (
           <SlotCell
@@ -92,9 +96,9 @@ export function CollageGrid({
               gridColumn: `${slotDef.col + 1} / span ${slotDef.colSpan}`,
             }}
           >
-            {hasPhoto ? (
+            {photoSrc ? (
               <SlotPhoto
-                src={slotState!.photoUrl!}
+                src={photoSrc}
                 alt={slotState!.displayName ?? `Slot ${slotDef.index + 1}`}
                 axis={slotFitAxis(
                   slotDef.rowSpan,

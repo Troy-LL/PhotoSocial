@@ -159,10 +159,6 @@ export function setTheme(
 
 export function lockSession(state: RoomState): void {
   state.session.status = "locked";
-  for (const slot of state.session.layout.slots) {
-    slot.photoUrl = null;
-    slot.thumbnailUrl = null;
-  }
   touchSession(state);
 }
 

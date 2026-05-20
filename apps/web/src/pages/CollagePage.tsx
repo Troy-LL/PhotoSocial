@@ -1,5 +1,6 @@
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { slotHasPhoto } from "@photosocial/shared";
 import { useSession } from "../context/SessionContext";
 import { CollageGrid } from "../features/collage/CollageGrid";
 import { api } from "../lib/api";
@@ -16,7 +17,7 @@ export function CollagePage() {
     return <p>Loading…</p>;
   }
 
-  const filled = state.collage.slots.filter((s) => s.photoUrl).length;
+  const filled = state.collage.slots.filter((s) => slotHasPhoto(s)).length;
   const total = state.collage.slots.length;
   const allIn = filled === total;
   const isLocked = state.session.status === "locked";

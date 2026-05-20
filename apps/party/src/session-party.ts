@@ -26,7 +26,6 @@ import {
   type RoomState,
 } from "./lib/session-state.js";
 import {
-  clearAllSlotPhotos,
   deleteSlotPhoto,
   loadRoomState,
   saveRoomState,
@@ -134,6 +133,14 @@ export default class SessionParty implements Party.Server {
         if (!parsed.success) {
           return jsonResponse(err("VALIDATION_ERROR", parsed.error.message), 400);
         }
+        const slotBefore = state.session.layout.slots.find(
+          (s) => s.index === parsed.data.slotIndex
+        );
+        const clearingPhoto = Boolean(
+          slotBefore?.assignedTo &&
+            slotBefore.assignedTo !== parsed.data.participantId &&
+            (slotBefore.photoUrl || slotBefore.thumbnailUrl)
+        );
         const result = assignSlot(
           state,
           parsed.data.participantId,
@@ -141,6 +148,9 @@ export default class SessionParty implements Party.Server {
         );
         if ("error" in result) {
           return jsonResponse(err(result.error, result.error), 400);
+        }
+        if (clearingPhoto) {
+          await deleteSlotPhoto(this.room, parsed.data.slotIndex);
         }
         try {
           await saveState(this.room, state);
@@ -174,7 +184,6 @@ export default class SessionParty implements Party.Server {
           return jsonResponse(err("FORBIDDEN", "FORBIDDEN"), 400);
         }
         lockSession(state);
-        await clearAllSlotPhotos(this.room, state);
         try {
           await saveState(this.room, state);
         } catch (e) {

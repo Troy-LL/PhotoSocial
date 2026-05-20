@@ -7,11 +7,13 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import type { SessionState, ThemeKey, WsEnvelope } from "@photosocial/shared";
 import {
   participantPhotoProgress,
   resolveThemeTokens,
   slotsForParticipant,
+  type SessionState,
+  type ThemeKey,
+  type WsEnvelope,
 } from "@photosocial/shared";
 import { api } from "../lib/api";
 import {
@@ -45,6 +47,37 @@ function deriveAssignedSlots(
 ): number[] {
   if (!data || !participantId) return [];
   return slotsForParticipant(data.session.layout, participantId);
+}
+
+function applySlotPhotoUpdate(
+  state: SessionState,
+  slotIndex: number,
+  photoUrl: string | null,
+  thumbnailUrl: string | null
+): SessionState {
+  const patch = <T extends { index: number; photoUrl: string | null; thumbnailUrl: string | null }>(
+    slots: T[]
+  ) =>
+    slots.map((slot) =>
+      slot.index === slotIndex
+        ? { ...slot, photoUrl, thumbnailUrl }
+        : slot
+    );
+
+  return {
+    ...state,
+    session: {
+      ...state.session,
+      layout: {
+        ...state.session.layout,
+        slots: patch(state.session.layout.slots),
+      },
+    },
+    collage: {
+      ...state.collage,
+      slots: patch(state.collage.slots),
+    },
+  };
 }
 
 export function SessionProvider({
@@ -128,10 +161,35 @@ export function SessionProvider({
       if (envelope.sessionId !== s.sessionId) return;
 
       switch (envelope.type) {
+        case "PHOTO_SUBMITTED": {
+          const payload = envelope.payload as {
+            slotIndex: number;
+            photoUrl: string;
+            thumbnailUrl: string;
+          };
+          setState((prev) => {
+            if (!prev) return prev;
+            return applySlotPhotoUpdate(
+              prev,
+              payload.slotIndex,
+              payload.photoUrl,
+              payload.thumbnailUrl
+            );
+          });
+          void refresh();
+          break;
+        }
+        case "PHOTO_CLEARED": {
+          const payload = envelope.payload as { slotIndex: number };
+          setState((prev) => {
+            if (!prev) return prev;
+            return applySlotPhotoUpdate(prev, payload.slotIndex, null, null);
+          });
+          void refresh();
+          break;
+        }
         case "SLOT_ASSIGNED":
         case "PARTICIPANT_JOINED":
-        case "PHOTO_SUBMITTED":
-        case "PHOTO_CLEARED":
         case "THEME_CHANGED":
         case "SESSION_LOCKED":
         case "SESSION_EXPIRED":

@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { motion, AnimatePresence } from "motion/react";
-import { createLayout } from "@photosocial/shared";
+import { createLayout, slotHasPhoto, slotPhotoDisplayUrl } from "@photosocial/shared";
 import { CameraView } from "../features/camera/CameraView";
 import { SlotActionSheet } from "../features/camera/SlotActionSheet";
 import { SlotFramingEditor } from "../features/camera/SlotFramingEditor";
@@ -52,7 +52,7 @@ export function CameraPage() {
     if (!state) return {};
     const map: Record<number, string> = {};
     for (const slot of state.collage.slots) {
-      const src = slot.thumbnailUrl ?? slot.photoUrl;
+      const src = slotPhotoDisplayUrl(slot);
       if (src) map[slot.index] = photoUrl(src);
     }
     return map;
@@ -127,7 +127,7 @@ export function CameraPage() {
     if (!state || !stored) return false;
     if (!assignedSlots.includes(slotIndex)) return false;
     const slot = state.collage.slots.find((s) => s.index === slotIndex);
-    if (!slot?.photoUrl) return false;
+    if (!slotHasPhoto(slot)) return false;
     const assigneeId = state.session.layout.slots.find(
       (s) => s.index === slotIndex
     )?.assignedTo;
@@ -207,7 +207,7 @@ export function CameraPage() {
               }
             : undefined
         }
-        slotPhotos={mySlotPhotos}
+        slotPhotos={slotPhotos}
         slotPhotoFits={photoFits}
         onSlotInteract={handleSlotInteract}
         canRetakeSlot={canRetakeSlot}

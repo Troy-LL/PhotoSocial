@@ -80,5 +80,7 @@
   "tryCameraAgain": "Try again",
   "uploadFailed": "Upload failed — tap to retry",
   "allPhotosIn": "All photos are in!",
-  "collageDownloadHint": "Tap Download to save your collage to this device."
+  "collageDownloadHint": "Tap Download to save your collage to this device.",
+  "collageDownloadMissingPhotos": "Photos aren't available for this collage. Ask the host to lock again after everyone has submitted.",
+  "preparingDownload": "Preparing download…"
 }

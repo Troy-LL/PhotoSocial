@@ -1,15 +1,38 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import confetti from "canvas-confetti";
+import { slotHasPhoto } from "@photosocial/shared";
 import { useSession } from "../context/SessionContext";
 import { CollageGrid } from "../features/collage/CollageGrid";
 import { clearSession } from "../lib/session-storage";
 import { Button } from "../components/Button";
 import styles from "./ExportPage.module.css";
 
+async function waitForCollageImages(root: HTMLElement): Promise<void> {
+  const imgs = root.querySelectorAll("img");
+  await Promise.all(
+    Array.from(imgs).map(
+      (img) =>
+        new Promise<void>((resolve) => {
+          if (img.complete && img.naturalWidth > 0) {
+            resolve();
+            return;
+          }
+          img.addEventListener("load", () => resolve(), { once: true });
+          img.addEventListener("error", () => resolve(), { once: true });
+        })
+    )
+  );
+}
+
 export function ExportPage() {
   const { t } = useTranslation();
-  const { stored, state, loading } = useSession();
+  const { stored, state, loading, refresh } = useSession();
+  const [downloading, setDownloading] = useState(false);
+
+  useEffect(() => {
+    void refresh();
+  }, [refresh]);
 
   useEffect(() => {
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -23,6 +46,7 @@ export function ExportPage() {
   }
 
   const finalUrl = state.session.finalCollageUrl;
+  const hasPhotos = state.collage.slots.some((s) => slotHasPhoto(s));
 
   async function downloadCollage() {
     if (finalUrl) {
@@ -32,18 +56,24 @@ export function ExportPage() {
       a.click();
       return;
     }
-    const { default: html2canvas } = await import("html2canvas");
     const el = document.getElementById("collage-export");
     if (!el) return;
-    const canvas = await html2canvas(el, {
-      scale: 2,
-      useCORS: true,
-      logging: false,
-    });
-    const link = document.createElement("a");
-    link.download = `PhotoSocial-${stored!.partyCode}.png`;
-    link.href = canvas.toDataURL("image/png");
-    link.click();
+    setDownloading(true);
+    try {
+      await waitForCollageImages(el);
+      const { default: html2canvas } = await import("html2canvas");
+      const canvas = await html2canvas(el, {
+        scale: 2,
+        useCORS: true,
+        logging: false,
+      });
+      const link = document.createElement("a");
+      link.download = `PhotoSocial-${stored!.partyCode}.png`;
+      link.href = canvas.toDataURL("image/png");
+      link.click();
+    } finally {
+      setDownloading(false);
+    }
   }
 
   function handleMakeAnother() {
@@ -62,15 +92,15 @@ export function ExportPage() {
           className={styles.finalPreview}
         />
       ) : (
-        <div id="collage-export">
-          <CollageGrid state={state} />
-        </div>
+        <CollageGrid state={state} id="collage-export" />
       )}
 
-      <p className={styles.hint}>{t("collageDownloadHint")}</p>
+      <p className={styles.hint}>
+        {hasPhotos ? t("collageDownloadHint") : t("collageDownloadMissingPhotos")}
+      </p>
 
-      <Button fullWidth onClick={downloadCollage}>
-        {t("download")}
+      <Button fullWidth onClick={downloadCollage} disabled={downloading || !hasPhotos}>
+        {downloading ? t("preparingDownload") : t("download")}
       </Button>
 
       <Button variant="ghost" fullWidth onClick={handleMakeAnother}>
