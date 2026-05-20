@@ -82,5 +82,6 @@
   "allPhotosIn": "All photos are in!",
   "collageDownloadHint": "Tap Download to save your collage to this device.",
   "collageDownloadMissingPhotos": "Photos aren't available for this collage. Ask the host to lock again after everyone has submitted.",
-  "preparingDownload": "Preparing download…"
+  "preparingDownload": "Preparing download…",
+  "hostLockedCollage": "The host locked the collage — save your copy below."
 }

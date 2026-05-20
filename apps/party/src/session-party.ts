@@ -28,7 +28,9 @@ import {
 import {
   deleteSlotPhoto,
   loadRoomState,
+  patchSessionStatus,
   saveRoomState,
+  snapshotExportPhotos,
 } from "./lib/room-storage.js";
 
 async function loadState(room: Party.Room): Promise<RoomState | null> {
@@ -185,7 +187,12 @@ export default class SessionParty implements Party.Server {
         }
         lockSession(state);
         try {
-          await saveState(this.room, state);
+          await snapshotExportPhotos(this.room, state);
+          await patchSessionStatus(
+            this.room,
+            state.session.status,
+            state.session.lastActivityAt
+          );
         } catch (e) {
           const res = storageErrorResponse(e);
           if (res) return res;

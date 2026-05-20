@@ -7,6 +7,13 @@
   margin-bottom: 24px;
 }
 
+.lockedHint {
+  color: var(--color-text-secondary);
+  text-align: center;
+  margin: 0 0 12px;
+  line-height: 1.5;
+}
+
 .page > * + * {
   margin-top: 16px;
 }

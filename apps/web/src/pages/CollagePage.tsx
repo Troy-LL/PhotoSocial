@@ -4,10 +4,9 @@ import { slotHasPhoto } from "@photosocial/shared";
 import { useSession } from "../context/SessionContext";
 import { CollageGrid } from "../features/collage/CollageGrid";
 import { api } from "../lib/api";
+import { cachePhotosFromState } from "../lib/collage-photo-cache";
 import { Button } from "../components/Button";
-import styles from "./CollagePage.module.css";
-
-export function CollagePage() {
+import styles from "./CollagePage.module.css";export function CollagePage() {
   const { t } = useTranslation();
   const { code } = useParams();
   const navigate = useNavigate();
@@ -23,14 +22,14 @@ export function CollagePage() {
   const isLocked = state.session.status === "locked";
 
   async function handleLock() {
-    if (!stored) return;
+    if (!stored || !state) return;
+    cachePhotosFromState(stored.sessionId, state);
     const res = await api.lockSession(stored.sessionId, stored.wsToken);
     if (res.success) {
       await refresh();
       navigate(`/party/${code}/export`);
     }
   }
-
   return (
     <div className={styles.page}>
       <h1>{t("viewCollage")}</h1>
@@ -48,9 +47,14 @@ export function CollagePage() {
       )}
 
       {isLocked && (
-        <Link to={`/party/${code}/export`}>
-          <Button fullWidth>{t("download")}</Button>
-        </Link>
+        <>
+          {!isHost && (
+            <p className={styles.lockedHint}>{t("hostLockedCollage")}</p>
+          )}
+          <Link to={`/party/${code}/export`}>
+            <Button fullWidth>{t("download")}</Button>
+          </Link>
+        </>
       )}
 
       <Link to={`/party/${code}/lobby`}>

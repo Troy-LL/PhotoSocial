@@ -64,6 +64,7 @@ export function LobbyPage() {
   }
 
   const slotsFull = state.session.layout.slots.every((s) => s.assignedTo);
+  const isLocked = state.session.status === "locked";
 
   return (
     <motion.div
@@ -191,6 +192,17 @@ export function LobbyPage() {
           {t("viewCollage")}
         </Button>
       </Link>
+
+      {isLocked && (
+        <section className={styles.lockedSection}>
+          {!isHost && (
+            <p className={styles.lockedHint}>{t("hostLockedCollage")}</p>
+          )}
+          <Link to={`/party/${code}/export`}>
+            <Button fullWidth>{t("download")}</Button>
+          </Link>
+        </section>
+      )}
     </motion.div>
   );
 }

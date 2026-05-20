@@ -98,3 +98,14 @@
   color: var(--color-text-secondary);
   font-size: 1.125rem;
 }
+
+.lockedSection {
+  margin-top: 8px;
+}
+
+.lockedHint {
+  text-align: center;
+  color: var(--color-text-secondary);
+  margin: 0 0 12px;
+  line-height: 1.5;
+}

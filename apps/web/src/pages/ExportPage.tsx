@@ -1,9 +1,10 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import confetti from "canvas-confetti";
 import { slotHasPhoto } from "@photosocial/shared";
 import { useSession } from "../context/SessionContext";
 import { CollageGrid } from "../features/collage/CollageGrid";
+import { mergeCachedPhotosIntoState } from "../lib/collage-photo-cache";
 import { clearSession } from "../lib/session-storage";
 import { Button } from "../components/Button";
 import styles from "./ExportPage.module.css";
@@ -41,12 +42,20 @@ export function ExportPage() {
     }
   }, []);
 
-  if (loading || !state || !stored) {
+  const exportState = useMemo(
+    () =>
+      state && stored
+        ? mergeCachedPhotosIntoState(stored.sessionId, state)
+        : null,
+    [state, stored]
+  );
+
+  if (loading || !state || !stored || !exportState) {
     return <p>Loading…</p>;
   }
 
-  const finalUrl = state.session.finalCollageUrl;
-  const hasPhotos = state.collage.slots.some((s) => slotHasPhoto(s));
+  const finalUrl = exportState.session.finalCollageUrl;
+  const hasPhotos = exportState.collage.slots.some((s) => slotHasPhoto(s));
 
   async function downloadCollage() {
     if (finalUrl) {
@@ -83,7 +92,7 @@ export function ExportPage() {
 
   return (
     <div className={styles.page}>
-      <h1>{t("allPhotosIn")}</h1>
+      <h1>{hasPhotos ? t("allPhotosIn") : t("collageDownloadMissingPhotos")}</h1>
 
       {finalUrl ? (
         <img
@@ -92,7 +101,7 @@ export function ExportPage() {
           className={styles.finalPreview}
         />
       ) : (
-        <CollageGrid state={state} id="collage-export" />
+        <CollageGrid state={exportState} id="collage-export" />
       )}
 
       <p className={styles.hint}>

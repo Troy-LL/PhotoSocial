@@ -10,12 +10,17 @@ import {
 import {
   participantPhotoProgress,
   resolveThemeTokens,
+  slotHasPhoto,
   slotsForParticipant,
   type SessionState,
   type ThemeKey,
   type WsEnvelope,
 } from "@photosocial/shared";
 import { api } from "../lib/api";
+import {
+  cachePhotosFromState,
+  mergeCachedPhotosIntoState,
+} from "../lib/collage-photo-cache";
 import {
   clearSession,
   getStoredSession,
@@ -80,6 +85,38 @@ function applySlotPhotoUpdate(
   };
 }
 
+function mergeSessionPhotos(
+  prev: SessionState | null,
+  incoming: SessionState,
+  sessionId: string
+): SessionState {
+  const withPrev = prev ? mergeSessionPhotosFromPrev(prev, incoming) : incoming;
+  return mergeCachedPhotosIntoState(sessionId, withPrev);
+}
+
+function mergeSessionPhotosFromPrev(
+  prev: SessionState,
+  incoming: SessionState
+): SessionState {
+  let merged = incoming;
+  for (const slot of incoming.collage.slots) {
+    if (slotHasPhoto(slot)) continue;
+    const prevSlot = prev.collage.slots.find((s) => s.index === slot.index);
+    if (!prevSlot || !slotHasPhoto(prevSlot)) continue;
+    merged = applySlotPhotoUpdate(
+      merged,
+      slot.index,
+      prevSlot.photoUrl,
+      prevSlot.thumbnailUrl
+    );
+  }
+  return merged;
+}
+
+function persistPhotoCache(sessionId: string, state: SessionState): void {
+  cachePhotosFromState(sessionId, state);
+}
+
 export function SessionProvider({
   children,
   partyCode,
@@ -116,7 +153,11 @@ export function SessionProvider({
     try {
       const res = await api.getSessionState(s.sessionId, s.wsToken);
       if (res.success) {
-        setState(res.data);
+        setState((prev) => {
+          const merged = mergeSessionPhotos(prev, res.data, s.sessionId);
+          persistPhotoCache(s.sessionId, merged);
+          return merged;
+        });
         setSessionError(null);
         setAssignedSlots(deriveAssignedSlots(res.data, s.participantId));
         const serverIsHost = res.data.session.hostId === s.participantId;
@@ -169,14 +210,15 @@ export function SessionProvider({
           };
           setState((prev) => {
             if (!prev) return prev;
-            return applySlotPhotoUpdate(
+            const next = applySlotPhotoUpdate(
               prev,
               payload.slotIndex,
               payload.photoUrl,
               payload.thumbnailUrl
             );
+            persistPhotoCache(s.sessionId, next);
+            return next;
           });
-          void refresh();
           break;
         }
         case "PHOTO_CLEARED": {
@@ -188,10 +230,16 @@ export function SessionProvider({
           void refresh();
           break;
         }
+        case "SESSION_LOCKED":
+          setState((prev) => {
+            if (prev) persistPhotoCache(s.sessionId, prev);
+            return prev;
+          });
+          void refresh();
+          break;
         case "SLOT_ASSIGNED":
         case "PARTICIPANT_JOINED":
         case "THEME_CHANGED":
-        case "SESSION_LOCKED":
         case "SESSION_EXPIRED":
           void refresh();
           break;

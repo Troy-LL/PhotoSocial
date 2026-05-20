@@ -1,6 +1,6 @@
 import type { ApiResponse } from "@photosocial/shared";
 import { partykitHttpOrigin } from "./deploy-config.js";
-import { blobToJpegDataUrlCompact } from "./image-data-url.js";
+import { encodePartySlotPhotos } from "./image-data-url.js";
 
 async function request<T>(
   path: string,
@@ -107,10 +107,7 @@ export const api = {
     blob: Blob,
     slotIndex: number
   ) => {
-    const [photoDataUrl, thumbDataUrl] = await Promise.all([
-      blobToJpegDataUrlCompact(blob, 720, 90_000),
-      blobToJpegDataUrlCompact(blob, 280, 28_000),
-    ]);
+    const { photoDataUrl, thumbDataUrl } = await encodePartySlotPhotos(blob);
     return request<{ photoUrl: string; thumbnailUrl: string }>(
       `/parties/main/${sessionId}`,
       {

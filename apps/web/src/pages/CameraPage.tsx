@@ -14,6 +14,7 @@ import {
 } from "../features/camera/slot-photo-fit";
 import { useMyPhotoProgress, useSession } from "../context/SessionContext";
 import { api, photoUrl } from "../lib/api";
+import { cacheSlotPhoto } from "../lib/collage-photo-cache";
 import { Button } from "../components/Button";
 import styles from "./CameraPage.module.css";
 
@@ -43,6 +44,7 @@ export function CameraPage() {
 
   const progress = useMyPhotoProgress(state, stored?.participantId);
   const inReview = progress.allFilled && !isRetaking;
+  const isLocked = state?.session.status === "locked";
 
   const layout = state?.session.layout.preset
     ? createLayout(state.session.layout.preset)
@@ -92,6 +94,14 @@ export function CameraPage() {
         setUploadError(true);
         return false;
       }
+      if (res.data) {
+        cacheSlotPhoto(
+          stored.sessionId,
+          activeSlot,
+          res.data.photoUrl,
+          res.data.thumbnailUrl
+        );
+      }
       await refresh();
       setIsRetaking(false);
       setFocusSlot(null);
@@ -124,6 +134,7 @@ export function CameraPage() {
   }
 
   function canRetakeSlot(slotIndex: number): boolean {
+    if (isLocked) return false;
     if (!state || !stored) return false;
     if (!assignedSlots.includes(slotIndex)) return false;
     const slot = state.collage.slots.find((s) => s.index === slotIndex);
@@ -150,6 +161,7 @@ export function CameraPage() {
   }
 
   const canCapture =
+    !isLocked &&
     activeSlot !== null &&
     !mySlotPhotos[activeSlot] &&
     (!progress.allFilled || isRetaking);
@@ -173,20 +185,22 @@ export function CameraPage() {
     >
       <AnimatePresence mode="wait">
         <motion.div
-          key={inReview ? "done" : `slot-${activeSlot}`}
+          key={isLocked ? "locked" : inReview ? "done" : `slot-${activeSlot}`}
           className={styles.notice}
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -8 }}
         >
-          {t(noticeKey, noticeParams)}
+          {isLocked
+            ? t("hostLockedCollage")
+            : t(noticeKey, noticeParams)}
         </motion.div>
       </AnimatePresence>
 
       <CameraView
         onCapture={handleCapture}
         captureDisabled={uploading || !canCapture}
-        reviewMode={inReview}
+        reviewMode={inReview || isLocked}
         autoResumeKey={autoResumeKey}
         photoProgress={
           progress.total > 1
@@ -212,7 +226,14 @@ export function CameraPage() {
         onSlotInteract={handleSlotInteract}
         canRetakeSlot={canRetakeSlot}
         doneAction={
-          inReview ? (
+          isLocked ? (
+            <Button
+              fullWidth
+              onClick={() => navigate(`/party/${code}/export`)}
+            >
+              {t("download")}
+            </Button>
+          ) : inReview ? (
             <Button
               variant="secondary"
               fullWidth
