@@ -208,7 +208,7 @@ export default class SessionParty implements Party.Server {
         const photoDataUrl = body.photoDataUrl as string | undefined;
         const thumbDataUrl = body.thumbDataUrl as string | undefined;
         const parsed = submitPhotoSchema.safeParse(body);
-        if (!parsed.success || !photoDataUrl || !thumbDataUrl) {
+        if (!parsed.success || (!photoDataUrl && !thumbDataUrl)) {
           return jsonResponse(err("VALIDATION_ERROR", "Photo required"), 400);
         }
         const result = submitPhoto(
@@ -228,8 +228,12 @@ export default class SessionParty implements Party.Server {
           if (res) return res;
           throw e;
         }
-        broadcast(this.room, this.room.id, "PHOTO_SUBMITTED", result);
-        return jsonResponse(ok({ photoUrl: result.photoUrl, thumbnailUrl: result.thumbnailUrl }));
+        if (result.complete) {
+          broadcast(this.room, this.room.id, "PHOTO_SUBMITTED", result);
+        }
+        return jsonResponse(
+          ok({ photoUrl: result.photoUrl, thumbnailUrl: result.thumbnailUrl })
+        );
       }
       case "clear-photo": {
         const parsed = clearSlotPhotoSchema.safeParse(body);

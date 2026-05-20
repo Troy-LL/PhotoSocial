@@ -108,19 +108,21 @@ export const api = {
     slotIndex: number
   ) => {
     const { photoDataUrl, thumbDataUrl } = await encodePartySlotPhotos(blob);
-    return request<{ photoUrl: string; thumbnailUrl: string }>(
-      `/parties/main/${sessionId}`,
-      {
-        method: "POST",
-        headers: authHeaders(token),
-        body: JSON.stringify({
-          action: "photos",
-          slotIndex,
-          photoDataUrl,
-          thumbDataUrl,
-        }),
-      }
-    );
+
+    const uploadPart = (body: Record<string, unknown>) =>
+      request<{ photoUrl: string; thumbnailUrl: string }>(
+        `/parties/main/${sessionId}`,
+        {
+          method: "POST",
+          headers: authHeaders(token),
+          body: JSON.stringify({ action: "photos", slotIndex, ...body }),
+        }
+      );
+
+    const fullRes = await uploadPart({ photoDataUrl });
+    if (!fullRes.success) return fullRes;
+
+    return uploadPart({ thumbDataUrl });
   },
 };
 

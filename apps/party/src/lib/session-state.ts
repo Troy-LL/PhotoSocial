@@ -166,23 +166,37 @@ export function submitPhoto(
   state: RoomState,
   participantId: string,
   slotIndex: number,
-  photoUrl: string,
-  thumbnailUrl: string
-): { error: string } | { slotIndex: number; participantId: string; thumbnailUrl: string; photoUrl: string } {
+  photoUrl?: string,
+  thumbnailUrl?: string
+):
+  | { error: string }
+  | {
+      slotIndex: number;
+      participantId: string;
+      thumbnailUrl: string;
+      photoUrl: string;
+      complete: boolean;
+    } {
+  if (!photoUrl && !thumbnailUrl) {
+    return { error: "VALIDATION_ERROR" };
+  }
   if (state.session.status === "locked") return { error: "SESSION_LOCKED" };
   const slot = state.session.layout.slots.find((s) => s.index === slotIndex);
   if (!slot || slot.assignedTo !== participantId) {
     return { error: "NO_SLOT" };
   }
-  slot.photoUrl = photoUrl;
-  slot.thumbnailUrl = thumbnailUrl;
-  slot.locked = true;
+  if (photoUrl) slot.photoUrl = photoUrl;
+  if (thumbnailUrl) slot.thumbnailUrl = thumbnailUrl;
+
+  const complete = Boolean(slot.photoUrl && slot.thumbnailUrl);
+  slot.locked = complete;
   touchSession(state);
   return {
     slotIndex,
     participantId,
-    thumbnailUrl,
-    photoUrl,
+    thumbnailUrl: slot.thumbnailUrl ?? "",
+    photoUrl: slot.photoUrl ?? "",
+    complete,
   };
 }
 

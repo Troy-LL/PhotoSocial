@@ -1,6 +1,9 @@
-/** PartyKit DO storage: 128 KiB/key — we store full + thumb in separate keys. */
+/** PartyKit DO storage: 128 KiB/key — full + thumb stored in separate keys. */
 export const PHOTO_STORAGE_FULL_BYTES = 115_000;
 export const PHOTO_STORAGE_THUMB_BYTES = 38_000;
+/** HTTP uploads are one image per request (combined body exceeds PartyKit ~128 KiB). */
+export const PHOTO_UPLOAD_FULL_BYTES = PHOTO_STORAGE_FULL_BYTES;
+export const PHOTO_UPLOAD_THUMB_BYTES = PHOTO_STORAGE_THUMB_BYTES;
 
 const MIME_CANDIDATES = ["image/webp", "image/jpeg"] as const;
 type PhotoMime = (typeof MIME_CANDIDATES)[number];
@@ -60,32 +63,22 @@ export async function blobToPhotoDataUrlCompact(
   maxBytes: number
 ): Promise<string> {
   let edge = maxEdgePx;
-  let best: { url: string; bytes: number; quality: number } | null = null;
 
-  for (let shrink = 0; shrink < 6; shrink++) {
+  for (let shrink = 0; shrink < 10; shrink++) {
     const canvas = await renderToCanvas(blob, edge);
 
     for (const mime of MIME_CANDIDATES) {
-      for (let quality = 0.94; quality >= 0.58; quality -= 0.04) {
+      for (let quality = 0.94; quality >= 0.52; quality -= 0.04) {
         const url = await canvasToDataUrl(canvas, mime, quality);
         if (!url) continue;
 
-        const bytes = dataUrlBytes(url);
-        if (bytes <= maxBytes) {
+        if (dataUrlBytes(url) <= maxBytes) {
           return url;
-        }
-
-        if (!best || bytes < best.bytes) {
-          best = { url, bytes, quality };
         }
       }
     }
 
-    edge = Math.round(edge * 0.88);
-  }
-
-  if (best) {
-    return best.url;
+    edge = Math.round(edge * 0.86);
   }
 
   throw new Error("Could not encode photo within size limits");
@@ -118,8 +111,8 @@ export async function encodePartySlotPhotos(blob: Blob): Promise<{
   thumbDataUrl: string;
 }> {
   const [photoDataUrl, thumbDataUrl] = await Promise.all([
-    blobToPhotoDataUrlCompact(blob, 1440, PHOTO_STORAGE_FULL_BYTES),
-    blobToPhotoDataUrlCompact(blob, 512, PHOTO_STORAGE_THUMB_BYTES),
+    blobToPhotoDataUrlCompact(blob, 1440, PHOTO_UPLOAD_FULL_BYTES),
+    blobToPhotoDataUrlCompact(blob, 512, PHOTO_UPLOAD_THUMB_BYTES),
   ]);
   return { photoDataUrl, thumbDataUrl };
 }
