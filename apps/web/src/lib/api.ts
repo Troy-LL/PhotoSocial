@@ -1,19 +1,8 @@
 import type { ApiResponse } from "@photosocial/shared";
 import { partykitHttpOrigin } from "./deploy-config.js";
-import { encodePartySlotPhotos } from "./image-data-url.js";
+import { encodePartySlotPhotoBlobs } from "./image-data-url.js";
 
-async function request<T>(
-  path: string,
-  options: RequestInit = {}
-): Promise<ApiResponse<T>> {
-  const res = await fetch(`${partykitHttpOrigin()}${path}`, {
-    ...options,
-    headers: {
-      "Content-Type": "application/json",
-      ...options.headers,
-    },
-  });
-
+async function parseApiResponse<T>(res: Response): Promise<ApiResponse<T>> {
   if (res.status === 413) {
     return {
       success: false,
@@ -40,6 +29,20 @@ async function request<T>(
   }
 
   return res.json() as Promise<ApiResponse<T>>;
+}
+
+async function request<T>(
+  path: string,
+  options: RequestInit = {}
+): Promise<ApiResponse<T>> {
+  const res = await fetch(`${partykitHttpOrigin()}${path}`, {
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      ...options.headers,
+    },
+  });
+  return parseApiResponse<T>(res);
 }
 
 export function authHeaders(token: string): HeadersInit {
@@ -133,25 +136,29 @@ export const api = {
     blob: Blob,
     slotIndex: number
   ) => {
-    const { photoDataUrl, thumbDataUrl } = await encodePartySlotPhotos(
-      blob,
-      slotIndex
-    );
+    const { fullBlob, thumbBlob } = await encodePartySlotPhotoBlobs(blob);
 
-    const uploadPart = (body: Record<string, unknown>) =>
-      request<{ photoUrl: string; thumbnailUrl: string }>(
-        `/parties/main/${sessionId}`,
-        {
-          method: "POST",
-          headers: authHeaders(token),
-          body: JSON.stringify({ action: "photos", slotIndex, ...body }),
-        }
-      );
+    async function uploadBinaryPart(
+      part: "full" | "thumb",
+      data: Blob
+    ): Promise<ApiResponse<{ photoUrl: string; thumbnailUrl: string }>> {
+      const res = await fetch(`${partykitHttpOrigin()}/parties/main/${sessionId}`, {
+        method: "POST",
+        headers: {
+          ...authHeaders(token),
+          "Content-Type": data.type || "image/webp",
+          "X-PS-Photo-Part": part,
+          "X-PS-Slot-Index": String(slotIndex),
+        },
+        body: data,
+      });
+      return parseApiResponse(res);
+    }
 
-    const fullRes = await uploadPart({ photoDataUrl });
+    const fullRes = await uploadBinaryPart("full", fullBlob);
     if (!fullRes.success) return fullRes;
 
-    return uploadPart({ thumbDataUrl });
+    return uploadBinaryPart("thumb", thumbBlob);
   },
 };
 

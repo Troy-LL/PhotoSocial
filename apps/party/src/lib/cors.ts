@@ -27,7 +27,7 @@ export function corsHeaders(request: Party.Request): Headers {
   headers.set("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
   headers.set(
     "Access-Control-Allow-Headers",
-    "Authorization, Content-Type, Accept"
+    "Authorization, Content-Type, Accept, X-PS-Photo-Part, X-PS-Slot-Index"
   );
   headers.set("Access-Control-Max-Age", "86400");
   return headers;

@@ -32,6 +32,11 @@ import {
   saveRoomState,
   snapshotExportPhotos,
 } from "./lib/room-storage.js";
+import {
+  bytesToDataUrl,
+  MAX_BINARY_PHOTO_BYTES,
+  parsePhotoPart,
+} from "./lib/binary-photo.js";
 
 async function loadState(room: Party.Room): Promise<RoomState | null> {
   return loadRoomState(room);
@@ -95,6 +100,13 @@ export default class SessionParty implements Party.Server {
       }
       if (request.method !== "POST") {
         return new Response("Method not allowed", { status: 405 });
+      }
+
+      const photoPart = parsePhotoPart(
+        request.headers.get("x-ps-photo-part")
+      );
+      if (photoPart) {
+        return this.handleBinaryPhotoUpload(request, photoPart);
       }
 
       let body: Record<string, unknown>;
@@ -264,6 +276,82 @@ export default class SessionParty implements Party.Server {
         return jsonResponse(err("VALIDATION_ERROR", "Unknown action"), 400);
     }
     });
+  }
+
+  private async handleBinaryPhotoUpload(
+    request: Party.Request,
+    part: "full" | "thumb"
+  ): Promise<Response> {
+    const auth = await authFromRequest(request, this.room.id);
+    if (!auth) {
+      return jsonResponse(err("UNAUTHORIZED", "Invalid token"), 401);
+    }
+
+    const slotRaw = request.headers.get("x-ps-slot-index");
+    const slotIndex = Number(slotRaw);
+    if (!Number.isInteger(slotIndex) || slotIndex < 0) {
+      return jsonResponse(err("VALIDATION_ERROR", "Invalid slot"), 400);
+    }
+
+    const contentType = request.headers.get("content-type") ?? "image/webp";
+    if (
+      !contentType.startsWith("image/webp") &&
+      !contentType.startsWith("image/jpeg")
+    ) {
+      return jsonResponse(err("VALIDATION_ERROR", "Invalid image type"), 400);
+    }
+
+    const bytes = new Uint8Array(await request.arrayBuffer());
+    if (bytes.length === 0) {
+      return jsonResponse(err("VALIDATION_ERROR", "Empty body"), 400);
+    }
+    if (bytes.length > MAX_BINARY_PHOTO_BYTES) {
+      return jsonResponse(
+        err(
+          "PHOTO_TOO_LARGE",
+          "Photo is too large. Try again or retake closer to the camera."
+        ),
+        413
+      );
+    }
+
+    const mime = contentType.split(";")[0]!.trim();
+    const dataUrl = bytesToDataUrl(bytes, mime);
+
+    const state = await loadState(this.room);
+    if (!state) {
+      return jsonResponse(err("SESSION_NOT_FOUND", "Not found"), 404);
+    }
+
+    const photoDataUrl = part === "full" ? dataUrl : undefined;
+    const thumbDataUrl = part === "thumb" ? dataUrl : undefined;
+
+    const result = submitPhoto(
+      state,
+      auth.participantId,
+      slotIndex,
+      photoDataUrl,
+      thumbDataUrl
+    );
+    if ("error" in result) {
+      return jsonResponse(err(result.error, result.error), 400);
+    }
+
+    try {
+      await saveState(this.room, state);
+    } catch (e) {
+      const res = storageErrorResponse(e);
+      if (res) return res;
+      throw e;
+    }
+
+    if (result.complete) {
+      broadcast(this.room, this.room.id, "PHOTO_SUBMITTED", result);
+    }
+
+    return jsonResponse(
+      ok({ photoUrl: result.photoUrl, thumbnailUrl: result.thumbnailUrl })
+    );
   }
 
   private async handleGet(req: Party.Request) {
