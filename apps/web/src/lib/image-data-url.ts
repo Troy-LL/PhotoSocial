@@ -1,15 +1,27 @@
 /** PartyKit DO storage: 128 KiB/key — full + thumb stored in separate keys. */
 export const PHOTO_STORAGE_FULL_BYTES = 115_000;
 export const PHOTO_STORAGE_THUMB_BYTES = 38_000;
-/** HTTP uploads are one image per request (combined body exceeds PartyKit ~128 KiB). */
-export const PHOTO_UPLOAD_FULL_BYTES = PHOTO_STORAGE_FULL_BYTES;
-export const PHOTO_UPLOAD_THUMB_BYTES = PHOTO_STORAGE_THUMB_BYTES;
+
+/**
+ * PartyKit / Cloudflare party HTTP POST bodies are capped near ~100 KiB.
+ * Each upload sends one image per request; budget is the full JSON body size.
+ */
+export const PARTY_HTTP_BODY_MAX_BYTES = 98_000;
 
 const MIME_CANDIDATES = ["image/webp", "image/jpeg"] as const;
 type PhotoMime = (typeof MIME_CANDIDATES)[number];
 
 function dataUrlBytes(url: string): number {
   return new TextEncoder().encode(url).length;
+}
+
+export function photoUploadBodyBytes(
+  slotIndex: number,
+  part: { photoDataUrl?: string; thumbDataUrl?: string }
+): number {
+  return new TextEncoder().encode(
+    JSON.stringify({ action: "photos", slotIndex, ...part })
+  ).length;
 }
 
 async function renderToCanvas(
@@ -84,6 +96,28 @@ export async function blobToPhotoDataUrlCompact(
   throw new Error("Could not encode photo within size limits");
 }
 
+async function encodeForUploadBody(
+  blob: Blob,
+  maxEdgePx: number,
+  slotIndex: number,
+  field: "photoDataUrl" | "thumbDataUrl",
+  maxBodyBytes: number
+): Promise<string> {
+  let maxDataUrlBytes = maxBodyBytes - 96;
+
+  for (let attempt = 0; attempt < 12; attempt++) {
+    const url = await blobToPhotoDataUrlCompact(blob, maxEdgePx, maxDataUrlBytes);
+    const bodyBytes = photoUploadBodyBytes(slotIndex, { [field]: url });
+    if (bodyBytes <= maxBodyBytes) {
+      return url;
+    }
+    maxDataUrlBytes = Math.floor(maxDataUrlBytes * 0.88);
+    if (maxDataUrlBytes < 12_000) break;
+  }
+
+  throw new Error("Could not encode photo within upload size limits");
+}
+
 /** @deprecated Use blobToPhotoDataUrlCompact */
 export async function blobToJpegDataUrlCompact(
   blob: Blob,
@@ -105,14 +139,29 @@ export async function blobToJpegDataUrl(
   return url;
 }
 
-/** Defaults tuned for collage slots: high-res WebP full + sharp thumb. */
-export async function encodePartySlotPhotos(blob: Blob): Promise<{
+/** Encode full + thumb for separate PartyKit uploads (each under HTTP body cap). */
+export async function encodePartySlotPhotos(
+  blob: Blob,
+  slotIndex: number
+): Promise<{
   photoDataUrl: string;
   thumbDataUrl: string;
 }> {
   const [photoDataUrl, thumbDataUrl] = await Promise.all([
-    blobToPhotoDataUrlCompact(blob, 1440, PHOTO_UPLOAD_FULL_BYTES),
-    blobToPhotoDataUrlCompact(blob, 512, PHOTO_UPLOAD_THUMB_BYTES),
+    encodeForUploadBody(
+      blob,
+      1280,
+      slotIndex,
+      "photoDataUrl",
+      PARTY_HTTP_BODY_MAX_BYTES
+    ),
+    encodeForUploadBody(
+      blob,
+      480,
+      slotIndex,
+      "thumbDataUrl",
+      PARTY_HTTP_BODY_MAX_BYTES
+    ),
   ]);
   return { photoDataUrl, thumbDataUrl };
 }

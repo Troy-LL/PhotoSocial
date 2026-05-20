@@ -13,6 +13,32 @@ async function request<T>(
       ...options.headers,
     },
   });
+
+  if (res.status === 413) {
+    return {
+      success: false,
+      error: {
+        code: "PHOTO_TOO_LARGE",
+        message:
+          "Photo upload is too large for the party server. Try again closer to the camera.",
+      },
+    };
+  }
+
+  if (!res.ok) {
+    try {
+      return (await res.json()) as ApiResponse<T>;
+    } catch {
+      return {
+        success: false,
+        error: {
+          code: "HTTP_ERROR",
+          message: `Request failed (${res.status})`,
+        },
+      };
+    }
+  }
+
   return res.json() as Promise<ApiResponse<T>>;
 }
 
@@ -107,7 +133,10 @@ export const api = {
     blob: Blob,
     slotIndex: number
   ) => {
-    const { photoDataUrl, thumbDataUrl } = await encodePartySlotPhotos(blob);
+    const { photoDataUrl, thumbDataUrl } = await encodePartySlotPhotos(
+      blob,
+      slotIndex
+    );
 
     const uploadPart = (body: Record<string, unknown>) =>
       request<{ photoUrl: string; thumbnailUrl: string }>(
