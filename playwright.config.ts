@@ -17,11 +17,25 @@ export default defineConfig({
       name: "mobile",
       use: { ...devices["iPhone 13"] },
     },
+    {
+      name: "solo-mobile",
+      testMatch: /solo-booth\.spec\.ts/,
+      use: {
+        ...devices["Pixel 7"],
+        permissions: ["camera"],
+        launchOptions: {
+          args: [
+            "--use-fake-ui-for-media-stream",
+            "--use-fake-device-for-media-stream",
+          ],
+        },
+      },
+    },
   ],
   webServer: [
     {
       command:
-        "pnpm --filter @photosocial/shared build && pnpm --filter @photosocial/party dev",
+        "npx pnpm@9.15.0 --filter @photosocial/shared build && npx pnpm@9.15.0 --filter @photosocial/party dev",
       stdout: /PartyKit/i,
       reuseExistingServer: !process.env.CI,
       timeout: 120000,
@@ -31,7 +45,7 @@ export default defineConfig({
       },
     },
     {
-      command: "pnpm --filter @photosocial/web dev",
+      command: "npx pnpm@9.15.0 --filter @photosocial/web dev",
       url: "http://localhost:5173",
       reuseExistingServer: !process.env.CI,
       timeout: 120000,

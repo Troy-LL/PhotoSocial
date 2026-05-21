@@ -81,6 +81,8 @@
   "uploadFailed": "Upload failed — tap to retry",
   "allPhotosIn": "All photos are in!",
   "collageDownloadHint": "Tap Download to save your collage to this device.",
+  "collageSharedHint": "Choose Save Image in the share sheet to keep your collage.",
+  "collageDownloadFailed": "Couldn't save the collage — try again.",
   "collageDownloadMissingPhotos": "Photos aren't available for this collage. Ask the host to lock again after everyone has submitted.",
   "preparingDownload": "Preparing download…",
   "hostLockedCollage": "The host locked the collage — save your copy below."

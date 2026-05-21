@@ -1,16 +1,24 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Navigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import confetti from "canvas-confetti";
+import { getLayoutPresetMeta } from "@photosocial/shared";
 import { CollageGrid } from "../../features/collage/CollageGrid";
 import { useSolo } from "../../context/SoloContext";
 import { applyThemePreference } from "../../lib/theme-preference";
+import {
+  downloadResultHint,
+  exportCollageFromElement,
+  isShareCancelled,
+} from "../../lib/collage-export";
 import { Button } from "../../components/Button";
 import styles from "../ExportPage.module.css";
 
 export function SoloCollagePage() {
   const { t } = useTranslation();
   const { data, sessionState, slotCount, reset } = useSolo();
+  const [downloading, setDownloading] = useState(false);
+  const [downloadHint, setDownloadHint] = useState<string | null>(null);
 
   useEffect(() => {
     if (!data) return;
@@ -36,19 +44,30 @@ export function SoloCollagePage() {
     return <Navigate to="/solo/camera" replace />;
   }
 
+  const layoutMeta = getLayoutPresetMeta(data.layout);
+
   async function downloadCollage() {
-    const { default: html2canvas } = await import("html2canvas");
     const el = document.getElementById("collage-export");
-    if (!el) return;
-    const canvas = await html2canvas(el, {
-      scale: 2,
-      useCORS: true,
-      logging: false,
-    });
-    const link = document.createElement("a");
-    link.download = "PhotoSocial-solo.png";
-    link.href = canvas.toDataURL("image/png");
-    link.click();
+    if (!el) {
+      setDownloadHint(t("collageDownloadFailed"));
+      return;
+    }
+    setDownloading(true);
+    setDownloadHint(null);
+    try {
+      const result = await exportCollageFromElement(
+        el,
+        layoutMeta.orientation,
+        "PhotoSocial-solo.png"
+      );
+      const hint = downloadResultHint(result, t);
+      if (hint) setDownloadHint(hint);
+    } catch (err) {
+      if (isShareCancelled(err)) return;
+      setDownloadHint(t("collageDownloadFailed"));
+    } finally {
+      setDownloading(false);
+    }
   }
 
   function handleMakeAnother() {
@@ -62,8 +81,10 @@ export function SoloCollagePage() {
 
       <CollageGrid state={sessionState} slotPhotoFits={data.photoFits} />
 
-      <Button fullWidth onClick={downloadCollage}>
-        {t("download")}
+      {downloadHint && <p className={styles.hint}>{downloadHint}</p>}
+
+      <Button fullWidth onClick={downloadCollage} disabled={downloading}>
+        {downloading ? t("preparingDownload") : t("download")}
       </Button>
 
       <Button variant="ghost" fullWidth onClick={handleMakeAnother}>

@@ -19,8 +19,20 @@
 }
 
 .horizontal {
-  width: 100%;
+  width: min(100%, calc(min(60vh, 320px) * 3));
+  max-width: 100%;
+  aspect-ratio: 3 / 1;
+  height: auto;
   max-height: min(60vh, 320px);
+}
+
+/* Fixed dimensions while html2canvas captures (set inline by collage-export) */
+.grid[data-exporting="true"] {
+  box-sizing: border-box;
+}
+
+.grid[data-exporting="true"] .slot {
+  min-height: 0;
 }
 
 .slot {

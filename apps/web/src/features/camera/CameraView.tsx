@@ -237,7 +237,7 @@ export function CameraView({
         autoTimerRef.current = setTimeout(() => {
           autoTimerRef.current = null;
           runCountdownRef.current();
-        }, 400);
+        }, boothStateRef.current.videoReady ? 400 : 1200);
       }
       return;
     }
@@ -377,6 +377,8 @@ export function CameraView({
   }
 
   function handleFilledSlotPress(slotIndex: number) {
+    cancelScheduled();
+    clearCollageFlash();
     if (onSlotInteract) {
       onSlotInteract(slotIndex);
     } else {
@@ -661,6 +663,9 @@ export function CameraView({
           )}
           {!isMobile && !inReview && (
             <div className={styles.stripAside}>{renderStripGrid()}</div>
+          )}
+          {isMobile && !inReview && !collageFlash && (
+            <div className={styles.stripMobileProgress}>{renderStripGrid()}</div>
           )}
         </div>
       ) : (

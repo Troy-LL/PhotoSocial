@@ -101,6 +101,7 @@ export function useCamera() {
   const capture = useCallback((): Blob | null => {
     const video = videoRef.current;
     if (!video || !streamRef.current) return null;
+    if (video.videoWidth <= 0 || video.videoHeight <= 0) return null;
 
     const canvas = document.createElement("canvas");
     canvas.width = video.videoWidth;

@@ -76,9 +76,14 @@
 
   .collageFlashFrame .collageFlashStrip.stripHorizontal {
     width: 100%;
-    height: auto;
+    height: 100%;
     max-width: 100%;
     max-height: 100%;
+  }
+
+  .collageFlashFrame button.filledSlot {
+    min-height: 48px;
+    min-width: 48px;
   }
 
   .stageMainReview {
@@ -111,6 +116,13 @@
     box-shadow: var(--shadow-card);
   }
 
+  .reviewCollageWrap:has(.stripHorizontal) {
+    width: min(94vw, 420px);
+    height: auto;
+    aspect-ratio: 3 / 1;
+    max-height: min(42dvh, 200px);
+  }
+
   .reviewCollageWrap .collageReviewStrip {
     width: auto;
     height: 100%;
@@ -121,8 +133,41 @@
 
   .reviewCollageWrap .collageReviewStrip.stripHorizontal {
     width: 100%;
-    height: auto;
+    height: 100%;
+    max-width: 100%;
     max-height: 100%;
+  }
+
+  .collageFlashFrame:has(.stripHorizontal) {
+    width: min(94vw, 420px);
+    height: auto;
+    aspect-ratio: 3 / 1;
+    max-height: min(42dvh, 200px);
+  }
+
+  .stripMobileProgress {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    flex-shrink: 0;
+    padding: 0 4px 4px;
+  }
+
+  .stripMobileProgress .stripVertical {
+    width: min(72vw, 220px);
+    max-height: min(22dvh, 160px);
+  }
+
+  .stripMobileProgress .stripHorizontal {
+    width: min(94vw, 420px);
+    max-height: min(18dvh, 120px);
+    aspect-ratio: 3 / 1;
+  }
+
+  .stripMobileProgress button.filledSlot {
+    min-height: 48px;
+    min-width: 48px;
   }
 }
 
