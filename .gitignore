@@ -1,5 +1,10 @@
 node_modules
 dist
+.agents/
+skills-lock.json
+.claude/
+.gemini/
+.cursor/
 .data
 **/data/sessions
 .env
