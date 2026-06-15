@@ -177,7 +177,7 @@ export async function saveCollageBlob(
       return "shared";
     } catch (err) {
       if (isShareCancelled(err)) return "cancelled";
-      throw err;
+      // Fall through to anchor download when share fails (e.g. lost user activation).
     }
   }
 
