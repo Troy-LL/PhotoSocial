@@ -94,6 +94,29 @@ Two genuine robustness gaps in `apps/web/src/features/camera/useCamera.ts`:
 `canplay` / `playing` / `timeupdate`, add a short self-clearing poll after stream
 attach as a fallback, and re-`init()` when the active track ends.
 
+### BUG-3 — Exported/downloaded collage PNG is completely blank (CONFIRMED, fixed)
+
+**Symptom:** On Windows desktop the OS share sheet opens (Web Share with files is
+supported there), and the saved `PhotoSocial-solo.png` is a blank image.
+
+**Root cause:** `collage-export.ts` → `prepareExportClone()` set
+`clone.style.visibility = "hidden"` on the off-screen clone before handing it to
+`html2canvas`. html2canvas does not paint elements that are not visible, so the
+entire collage rendered as fully transparent. The clone is already positioned
+off-screen via `left: -10000px`, so `visibility: hidden` was unnecessary and was
+the sole cause of the blank output.
+
+**Evidence:** driving the real `captureCollageElement()` and reading the canvas
+pixels — before: `nonTransparent: 0 / 1920000` (100% transparent); after removing
+the `visibility: hidden` line: `nonTransparent: 1919801 / 1920000` with 50+
+distinct colors, and the saved PNG shows the actual three-slot strip.
+
+**Fix:** remove `clone.style.visibility = "hidden"` (keep the off-screen offset).
+This affects every html2canvas export path (`exportCollageFromElement`, solo and
+party-without-`finalCollageUrl`). Note: this is the primary cause of the
+real-world "blank png"; BUG-1's share fallback is complementary (it ensures a
+file is always produced when `navigator.share()` itself rejects).
+
 ### Frame editing — verified working across breakpoints
 
 The framing editor (`SlotFramingEditor`) pans correctly via Pointer Events on

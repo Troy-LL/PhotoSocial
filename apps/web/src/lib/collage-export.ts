@@ -102,7 +102,9 @@ function prepareExportClone(
   clone.style.aspectRatio = "auto";
   clone.style.margin = "0";
   clone.style.pointerEvents = "none";
-  clone.style.visibility = "hidden";
+  // NOTE: do NOT set visibility:hidden / display:none / opacity:0 here —
+  // html2canvas does not paint non-visible elements, which yields a blank
+  // export. The clone is kept off-screen via the fixed left:-10000px offset.
   clone.dataset.exporting = "true";
 
   document.body.appendChild(clone);
