@@ -20,6 +20,34 @@ export function useCamera() {
     setVideoReady(video.videoWidth > 0 && video.videoHeight > 0);
   }, []);
 
+  const pollRef = useRef<ReturnType<typeof window.setInterval> | null>(null);
+
+  const startReadyPoll = useCallback(
+    (video: HTMLVideoElement) => {
+      if (pollRef.current !== null) {
+        window.clearInterval(pollRef.current);
+        pollRef.current = null;
+      }
+      let ticks = 0;
+      pollRef.current = window.setInterval(() => {
+        ticks++;
+        if (video.videoWidth > 0) {
+          markVideoReady(video);
+          if (pollRef.current !== null) {
+            window.clearInterval(pollRef.current);
+            pollRef.current = null;
+          }
+        } else if (ticks >= 8) {
+          if (pollRef.current !== null) {
+            window.clearInterval(pollRef.current);
+            pollRef.current = null;
+          }
+        }
+      }, 250) as unknown as ReturnType<typeof window.setInterval>;
+    },
+    [markVideoReady]
+  );
+
   const videoListenersCleanupRef = useRef<(() => void) | null>(null);
 
   const setVideoRef = useCallback(
@@ -37,19 +65,36 @@ export function useCamera() {
       node.addEventListener("loadeddata", onReady);
       node.addEventListener("loadedmetadata", onReady);
       node.addEventListener("resize", onReady);
+      node.addEventListener("canplay", onReady);
+      node.addEventListener("playing", onReady);
+      node.addEventListener("timeupdate", onReady);
       videoListenersCleanupRef.current = () => {
         node.removeEventListener("loadeddata", onReady);
         node.removeEventListener("loadedmetadata", onReady);
         node.removeEventListener("resize", onReady);
+        node.removeEventListener("canplay", onReady);
+        node.removeEventListener("playing", onReady);
+        node.removeEventListener("timeupdate", onReady);
+        if (pollRef.current !== null) {
+          window.clearInterval(pollRef.current);
+          pollRef.current = null;
+        }
       };
 
       if (streamRef.current) {
         attachStreamToVideo(node, streamRef.current);
       }
+      startReadyPoll(node);
       onReady();
     },
-    [markVideoReady]
+    [markVideoReady, startReadyPoll]
   );
+
+  const mountedRef = useRef(true);
+  const trackEndedCleanupRef = useRef<(() => void) | null>(null);
+  const initRef = useRef<
+    (facing?: "user" | "environment") => Promise<void>
+  >(async () => {});
 
   const init = useCallback(async (facing: "user" | "environment" = "user") => {
     setError(null);
@@ -69,7 +114,19 @@ export function useCamera() {
       setFacingMode(facing);
       if (videoRef.current) {
         attachStreamToVideo(videoRef.current, media);
+        startReadyPoll(videoRef.current);
       }
+      trackEndedCleanupRef.current?.();
+      const onTrackEnded = () => {
+        if (mountedRef.current) void initRef.current(facing);
+      };
+      const tracks = media.getVideoTracks();
+      tracks.forEach((track) => track.addEventListener("ended", onTrackEnded));
+      trackEndedCleanupRef.current = () => {
+        tracks.forEach((track) =>
+          track.removeEventListener("ended", onTrackEnded)
+        );
+      };
     } catch {
       try {
         const media = await navigator.mediaDevices.getUserMedia({
@@ -81,18 +138,42 @@ export function useCamera() {
         setVideoReady(false);
         if (videoRef.current) {
           attachStreamToVideo(videoRef.current, media);
+          startReadyPoll(videoRef.current);
         }
+        trackEndedCleanupRef.current?.();
+        const onTrackEnded = () => {
+          if (mountedRef.current) void initRef.current(facing);
+        };
+        const tracks = media.getVideoTracks();
+        tracks.forEach((track) => track.addEventListener("ended", onTrackEnded));
+        trackEndedCleanupRef.current = () => {
+          tracks.forEach((track) =>
+            track.removeEventListener("ended", onTrackEnded)
+          );
+        };
       } catch {
         streamRef.current = null;
         setStream(null);
         setError("denied");
       }
     }
-  }, []);
+  }, [startReadyPoll]);
 
   useEffect(() => {
+    initRef.current = init;
+  }, [init]);
+
+  useEffect(() => {
+    mountedRef.current = true;
     void init("user");
     return () => {
+      mountedRef.current = false;
+      trackEndedCleanupRef.current?.();
+      trackEndedCleanupRef.current = null;
+      if (pollRef.current !== null) {
+        window.clearInterval(pollRef.current);
+        pollRef.current = null;
+      }
       streamRef.current?.getTracks().forEach((t) => t.stop());
       streamRef.current = null;
     };
