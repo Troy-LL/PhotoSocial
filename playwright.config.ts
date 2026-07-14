@@ -12,14 +12,31 @@ export default defineConfig({
     trace: "on-first-retry",
   },
   projects: [
-    { name: "chromium", use: { ...devices["Desktop Chrome"] } },
+    {
+      name: "chromium",
+      testIgnore: [
+        /solo-booth\.spec\.ts/,
+        /strip-quality-audit\.spec\.ts/,
+        /party-booth\.spec\.ts/,
+      ],
+      use: { ...devices["Desktop Chrome"] },
+    },
     {
       name: "mobile",
+      testIgnore: [
+        /solo-booth\.spec\.ts/,
+        /strip-quality-audit\.spec\.ts/,
+        /party-booth\.spec\.ts/,
+      ],
       use: { ...devices["iPhone 13"] },
     },
     {
       name: "solo-mobile",
-      testMatch: /solo-booth\.spec\.ts/,
+      testMatch: [
+        /solo-booth\.spec\.ts/,
+        /strip-quality-audit\.spec\.ts/,
+        /party-booth\.spec\.ts/,
+      ],
       use: {
         ...devices["Pixel 7"],
         permissions: ["camera"],

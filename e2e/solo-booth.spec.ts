@@ -15,13 +15,13 @@ test("capture, retake a slot, and export collage", async ({ page }) => {
   }
 
   await takeOnePhoto();
-  await expect(page.getByRole("status")).toContainText("Photo 2 of 3", {
+  await expect(page.getByText("Photo 2 of 3", { exact: true })).toBeVisible({
     timeout: 10_000,
   });
 
   await page.getByRole("button", { name: "Photo 1 options" }).click();
   await page.getByRole("button", { name: "Retake" }).click();
-  await expect(page.getByRole("status")).toContainText("Photo 1 of 3", {
+  await expect(page.getByText("Photo 1 of 3", { exact: true })).toBeVisible({
     timeout: 10_000,
   });
 
@@ -29,10 +29,9 @@ test("capture, retake a slot, and export collage", async ({ page }) => {
   await takeOnePhoto();
   await takeOnePhoto();
 
-  await expect(page.getByRole("status")).toContainText(
-    "All photos are in — tap a slot to retake",
-    { timeout: 15_000 }
-  );
+  await expect(
+    page.getByText("All photos are in — tap a slot to retake", { exact: true })
+  ).toBeVisible({ timeout: 15_000 });
 
   await page.getByRole("button", { name: "View collage" }).click();
   await expect(page).toHaveURL(/\/solo\/collage/);

@@ -131,16 +131,9 @@ export function LobbyPage() {
             slotsFull ? (
               <p className={styles.hostHint}>{t("allSlotsTaken")}</p>
             ) : (
-              <>
-                <Button fullWidth onClick={() => void assignHostToFirstSlot()}>
-                  {t("addYourselfToCollage")}
-                </Button>
-                <Link to={`/party/${code}/assign`} className={styles.linkBtn}>
-                  <Button variant="ghost" fullWidth>
-                    {t("assignSlots")}
-                  </Button>
-                </Link>
-              </>
+              <Button fullWidth onClick={() => void assignHostToFirstSlot()}>
+                {t("addYourselfToCollage")}
+              </Button>
             )
           ) : (
             <Link to={`/party/${code}/camera`}>

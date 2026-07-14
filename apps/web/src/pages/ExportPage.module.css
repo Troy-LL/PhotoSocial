@@ -48,8 +48,10 @@
 }
 
 .finalPreview {
-  width: 100%;
-  max-height: min(70vh, 640px);
+  display: block;
+  width: min(100%, 960px);
+  max-height: min(75vh, 720px);
+  margin-inline: auto;
   object-fit: contain;
-  border-radius: var(--radius-card);
+  border-radius: 3px;
 }

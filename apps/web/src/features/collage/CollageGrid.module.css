@@ -1,47 +1,61 @@
-.grid {
-  display: grid;
-  gap: 8px;
+.frame {
+  /* Query container for booth inset/gap — cqw must live on a descendant. */
+  container-type: inline-size;
   max-width: 100%;
   margin-inline: auto;
   background: var(--layout-thumb-frame, var(--color-surface));
-  border-radius: var(--radius-card);
-  padding: 8px;
+  /* Near-sharp corners — paper strip, not a floating UI card */
+  border-radius: 3px;
   box-shadow: var(--shadow-card);
   position: relative;
   overflow: hidden;
+  box-sizing: border-box;
   transition:
     background-color var(--transition-theme),
     box-shadow var(--transition-theme);
 }
 
 .vertical {
-  width: min(100%, 280px);
+  width: min(100%, 300px);
 }
 
 .horizontal {
-  width: min(100%, calc(min(60vh, 320px) * 3));
+  width: min(100%, 960px);
   max-width: 100%;
   aspect-ratio: 3 / 1;
   height: auto;
-  max-height: min(60vh, 320px);
+  max-height: none;
+}
+
+.grid {
+  display: grid;
+  box-sizing: border-box;
+  width: 100%;
+  height: 100%;
+  /* Classic ~5–7% booth border relative to strip width */
+  padding: 5.5cqw;
+  gap: 3.25cqw;
 }
 
 /* Fixed dimensions while html2canvas captures (set inline by collage-export) */
-.grid[data-exporting="true"] {
+.frame[data-exporting="true"] {
   box-sizing: border-box;
+  box-shadow: none;
+  border-radius: 0;
 }
 
-.grid[data-exporting="true"] .slot {
+.frame[data-exporting="true"] .slot {
   min-height: 0;
+  border-radius: 0;
 }
 
 .slot {
   position: relative;
-  border-radius: 8px;
+  border-radius: 2px;
   overflow: hidden;
   background: var(--layout-thumb-cell, var(--color-surface-raised));
-  border: 1px solid var(--color-border);
-  min-height: 80px;
+  border: none;
+  min-height: 0;
   transition:
     background-color var(--transition-theme),
     border-color var(--transition-theme);

@@ -641,9 +641,7 @@ export function CameraView({
               {!inReview && collageFlash && isMobile && (
                 <div
                   className={styles.collageFlashOverlay}
-                  role="status"
-                  aria-live="polite"
-                  aria-label={t("collageStripPreview")}
+                  aria-hidden="true"
                 >
                   <div className={styles.collageFlashFrame}>
                     {renderStripGrid("flash")}

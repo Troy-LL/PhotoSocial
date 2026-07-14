@@ -71,52 +71,57 @@ export function CollageGrid({
   return (
     <div
       id={id}
-      className={`${styles.grid} ${meta.orientation === "vertical" ? styles.vertical : styles.horizontal}`}
-      style={{
-        aspectRatio: meta.aspectRatio,
-        gridTemplateColumns: `repeat(${cols}, 1fr)`,
-        gridTemplateRows: `repeat(${rows}, 1fr)`,
-      }}
+      className={`${styles.frame} ${meta.orientation === "vertical" ? styles.vertical : styles.horizontal}`}
+      style={{ aspectRatio: meta.aspectRatio }}
       role="img"
       aria-label="Photo collage"
     >
-      {slots.map((slotDef) => {
-        const slotState = collage.slots.find((s) => s.index === slotDef.index);
-        const photoSrc = slotPhotoDisplayUrl(slotState);
+      <div
+        className={styles.grid}
+        data-strip-pad=""
+        style={{
+          gridTemplateColumns: `repeat(${cols}, 1fr)`,
+          gridTemplateRows: `repeat(${rows}, 1fr)`,
+        }}
+      >
+        {slots.map((slotDef) => {
+          const slotState = collage.slots.find((s) => s.index === slotDef.index);
+          const photoSrc = slotPhotoDisplayUrl(slotState);
 
-        return (
-          <SlotCell
-            key={slotDef.index}
-            slotIndex={slotDef.index}
-            droppable={droppableSlots}
-            selected={selectedSlot === slotDef.index}
-            onClick={() => onSlotClick?.(slotDef.index)}
-            style={{
-              gridRow: `${slotDef.row + 1} / span ${slotDef.rowSpan}`,
-              gridColumn: `${slotDef.col + 1} / span ${slotDef.colSpan}`,
-            }}
-          >
-            {photoSrc ? (
-              <SlotPhoto
-                src={photoSrc}
-                alt={slotState!.displayName ?? `Slot ${slotDef.index + 1}`}
-                axis={slotFitAxis(
-                  slotDef.rowSpan,
-                  slotDef.colSpan,
-                  meta.orientation
-                )}
-                fit={slotPhotoFits[slotDef.index] ?? DEFAULT_SLOT_PHOTO_FIT}
-                className={styles.slotMedia}
-              />
-            ) : (
-              <PlaceholderTile
-                name={slotState?.displayName}
-                index={slotDef.index}
-              />
-            )}
-          </SlotCell>
-        );
-      })}
+          return (
+            <SlotCell
+              key={slotDef.index}
+              slotIndex={slotDef.index}
+              droppable={droppableSlots}
+              selected={selectedSlot === slotDef.index}
+              onClick={() => onSlotClick?.(slotDef.index)}
+              style={{
+                gridRow: `${slotDef.row + 1} / span ${slotDef.rowSpan}`,
+                gridColumn: `${slotDef.col + 1} / span ${slotDef.colSpan}`,
+              }}
+            >
+              {photoSrc ? (
+                <SlotPhoto
+                  src={photoSrc}
+                  alt={slotState!.displayName ?? `Slot ${slotDef.index + 1}`}
+                  axis={slotFitAxis(
+                    slotDef.rowSpan,
+                    slotDef.colSpan,
+                    meta.orientation
+                  )}
+                  fit={slotPhotoFits[slotDef.index] ?? DEFAULT_SLOT_PHOTO_FIT}
+                  className={styles.slotMedia}
+                />
+              ) : (
+                <PlaceholderTile
+                  name={slotState?.displayName}
+                  index={slotDef.index}
+                />
+              )}
+            </SlotCell>
+          );
+        })}
+      </div>
     </div>
   );
 }

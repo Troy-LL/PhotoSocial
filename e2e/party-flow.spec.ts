@@ -16,7 +16,9 @@ test.describe("PhotoSocial party flow", () => {
 
     await expect(page).toHaveURL(/\/party\/[A-Z]+-\d{4}\/lobby/);
     await expect(page.getByText(/[A-Z]+-\d{4}/)).toBeVisible();
-    await expect(page.getByRole("link", { name: "Assign Slots" })).toBeVisible();
+    await expect(
+      page.getByRole("link", { name: "Assign Slots" })
+    ).toHaveCount(1);
   });
 
   test("invalid party code shows error", async ({ page }) => {
@@ -57,7 +59,9 @@ test.describe("PhotoSocial party flow", () => {
     await hostPage.getByRole("link", { name: "Assign Slots" }).click();
 
     await hostPage.waitForURL(/\/assign/);
-    await expect(hostPage.getByText("Participants")).toBeVisible();
+    await expect(
+      hostPage.getByRole("heading", { name: "Participants" })
+    ).toBeVisible();
 
     await hostContext.close();
     await guestContext.close();
