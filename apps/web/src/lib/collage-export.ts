@@ -21,10 +21,11 @@ export function collageExportDimensions(orientation: CollageExportOrientation): 
   width: number;
   height: number;
 } {
+  // Print-friendly ~4"×12" at 300dpi-ish; keep exact 1:3 / 3:1 aspect.
   if (orientation === "horizontal") {
-    return { width: 2400, height: 800 };
+    return { width: 3600, height: 1200 };
   }
-  return { width: 800, height: 2400 };
+  return { width: 1200, height: 3600 };
 }
 
 export function isShareCancelled(err: unknown): boolean {
@@ -90,6 +91,8 @@ function prepareExportClone(
 ): HTMLElement {
   const { width, height } = collageExportDimensions(orientation);
   const clone = source.cloneNode(true) as HTMLElement;
+  const inset = Math.round(width * 0.055);
+  const gap = Math.round(width * 0.0325);
 
   clone.removeAttribute("id");
   clone.style.position = "fixed";
@@ -102,6 +105,16 @@ function prepareExportClone(
   clone.style.aspectRatio = "auto";
   clone.style.margin = "0";
   clone.style.pointerEvents = "none";
+  // Pixel padding/gap on the inner pad layer, keyed to export width so margins
+  // match on-screen cqw inset even when html2canvas ignores container queries.
+  const pad = clone.querySelector("[data-strip-pad]") as HTMLElement | null;
+  if (pad) {
+    pad.style.padding = `${inset}px`;
+    pad.style.gap = `${gap}px`;
+  } else {
+    clone.style.padding = `${inset}px`;
+    clone.style.gap = `${gap}px`;
+  }
   // NOTE: do NOT set visibility:hidden / display:none / opacity:0 here —
   // html2canvas does not paint non-visible elements, which yields a blank
   // export. The clone is kept off-screen via the fixed left:-10000px offset.

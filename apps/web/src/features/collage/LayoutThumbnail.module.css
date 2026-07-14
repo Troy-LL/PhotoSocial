@@ -1,12 +1,13 @@
 .thumb {
+  container-type: inline-size;
   display: grid;
-  gap: 2px;
+  gap: 5cqw;
   width: 100%;
   max-width: 56px;
-  padding: 3px;
+  padding: 6cqw;
   background: var(--layout-thumb-frame, var(--color-surface));
   border: 1px solid var(--color-border);
-  border-radius: 4px;
+  border-radius: 2px;
   box-sizing: border-box;
   transition:
     background-color var(--transition-theme),

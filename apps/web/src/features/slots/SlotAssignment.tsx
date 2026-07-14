@@ -4,7 +4,10 @@ import { useTranslation } from "react-i18next";
 import {
   DndContext,
   DragOverlay,
+  PointerSensor,
   useDraggable,
+  useSensor,
+  useSensors,
   type DragEndEvent,
 } from "@dnd-kit/core";
 import {
@@ -54,6 +57,10 @@ export function SlotAssignment() {
     null
   );
   const [activeId, setActiveId] = useState<string | null>(null);
+  // Require a short drag distance so a tap still selects (tap-to-assign).
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } })
+  );
 
   if (!stored || !state) return null;
 
@@ -92,6 +99,7 @@ export function SlotAssignment() {
 
   return (
     <DndContext
+      sensors={sensors}
       onDragStart={(e) => setActiveId(e.active.id as string)}
       onDragEnd={handleDragEnd}
     >

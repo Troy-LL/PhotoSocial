@@ -6,7 +6,9 @@ import { CollageGrid } from "../features/collage/CollageGrid";
 import { api } from "../lib/api";
 import { cachePhotosFromState } from "../lib/collage-photo-cache";
 import { Button } from "../components/Button";
-import styles from "./CollagePage.module.css";export function CollagePage() {
+import styles from "./CollagePage.module.css";
+
+export function CollagePage() {
   const { t } = useTranslation();
   const { code } = useParams();
   const navigate = useNavigate();

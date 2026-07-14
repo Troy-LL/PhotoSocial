@@ -585,13 +585,14 @@ button.filledSlot {
 
 .strip {
   display: grid;
-  gap: 3px;
-  padding: 4px;
   box-sizing: border-box;
   background: var(--layout-thumb-frame, var(--color-surface));
   border: 2px solid var(--camera-frame-border, var(--color-border));
-  border-radius: 6px;
+  border-radius: 3px;
   box-shadow: var(--shadow-card);
+  /* Live camera strip — compact booth inset at typical strip preview widths */
+  padding: clamp(6px, 2.2vw, 14px);
+  gap: clamp(4px, 1.4vw, 10px);
   /* aspect-ratio set inline from layout preset */
 }
 
