@@ -27,6 +27,10 @@ import styles from "./CameraView.module.css";
 
 const COUNTDOWNS = [3, 5, 10] as const;
 
+function isE2eCamera(): boolean {
+  return window.__E2E_CAMERA__ === true;
+}
+
 interface CameraViewProps {
   onCapture: (blob: Blob) => boolean | void | Promise<boolean | void>;
   onCancel?: () => void;
@@ -150,7 +154,7 @@ export function CameraView({
   const showCollageFlashRef = useRef<() => Promise<void>>(() => Promise.resolve());
 
   showCollageFlashRef.current = () => {
-    if (!isMobileRef.current || !layout) {
+    if (!isMobileRef.current || !layout || isE2eCamera()) {
       return Promise.resolve();
     }
     clearCollageFlash();
@@ -185,6 +189,11 @@ export function CameraView({
       s.countdown !== null ||
       collageFlashRef.current
     ) {
+      return;
+    }
+
+    if (isE2eCamera()) {
+      void doCaptureRef.current();
       return;
     }
 
@@ -410,6 +419,7 @@ export function CameraView({
         }}
         role="group"
         aria-label={stripLabel}
+        data-strip-preview=""
       >
         {layout!.slots.map((slot) => {
           const cellStyle = {
