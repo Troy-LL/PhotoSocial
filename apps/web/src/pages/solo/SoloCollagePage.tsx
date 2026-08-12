@@ -83,7 +83,12 @@ export function SoloCollagePage() {
 
       {downloadHint && <p className={styles.hint}>{downloadHint}</p>}
 
-      <Button fullWidth onClick={downloadCollage} disabled={downloading}>
+      <Button
+        fullWidth
+        className={styles.download}
+        onClick={downloadCollage}
+        disabled={downloading}
+      >
         {downloading ? t("preparingDownload") : t("download")}
       </Button>
 

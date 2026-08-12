@@ -5,7 +5,7 @@
 import { test, expect, type Page } from "@playwright/test";
 import * as fs from "node:fs";
 import * as path from "node:path";
-import { PNG } from "pngjs";
+import { analyzePng } from "./helpers/png-analyze";
 
 const ARTIFACT_DIR = path.join(process.cwd(), "test-results", "strip-audit");
 
@@ -50,38 +50,6 @@ const LAYOUTS: LayoutChoice[] = [
 
 function ensureDir(dir: string) {
   fs.mkdirSync(dir, { recursive: true });
-}
-
-function analyzePng(filePath: string) {
-  const buf = fs.readFileSync(filePath);
-  const png = PNG.sync.read(buf);
-  const { width, height, data } = png;
-  let opaque = 0;
-  let nearWhite = 0;
-  let nearBlack = 0;
-  const colors = new Set<string>();
-  for (let i = 0; i < data.length; i += 4) {
-    const r = data[i]!;
-    const g = data[i + 1]!;
-    const b = data[i + 2]!;
-    const a = data[i + 3]!;
-    if (a < 8) continue;
-    opaque++;
-    if (r > 245 && g > 245 && b > 245) nearWhite++;
-    if (r < 20 && g < 20 && b < 20) nearBlack++;
-    // Quantize for color diversity (ignore alpha)
-    colors.add(`${r >> 4},${g >> 4},${b >> 4}`);
-  }
-  return {
-    width,
-    height,
-    aspect: width / height,
-    opaqueRatio: opaque / (width * height),
-    whiteRatio: nearWhite / Math.max(1, opaque),
-    blackRatio: nearBlack / Math.max(1, opaque),
-    distinctColors: colors.size,
-    bytes: buf.length,
-  };
 }
 
 async function disableShare(page: Page) {

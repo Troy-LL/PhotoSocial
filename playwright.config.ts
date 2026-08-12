@@ -1,5 +1,15 @@
 import { defineConfig, devices } from "@playwright/test";
 
+const cameraLaunch = {
+  permissions: ["camera"] as const,
+  launchOptions: {
+    args: [
+      "--use-fake-ui-for-media-stream",
+      "--use-fake-device-for-media-stream",
+    ],
+  },
+};
+
 export default defineConfig({
   testDir: "./e2e",
   fullyParallel: false,
@@ -19,7 +29,23 @@ export default defineConfig({
         /strip-quality-audit\.spec\.ts/,
         /party-booth\.spec\.ts/,
       ],
-      use: { ...devices["Desktop Chrome"] },
+      use: {
+        ...devices["Desktop Chrome"],
+        viewport: { width: 1280, height: 800 },
+        ...cameraLaunch,
+      },
+    },
+    {
+      name: "tablet",
+      testMatch: /viewport-preview\.spec\.ts/,
+      use: {
+        ...devices["Desktop Chrome"],
+        viewport: { width: 820, height: 1180 },
+        hasTouch: true,
+        isMobile: false,
+        deviceScaleFactor: 2,
+        ...cameraLaunch,
+      },
     },
     {
       name: "mobile",
@@ -28,7 +54,12 @@ export default defineConfig({
         /strip-quality-audit\.spec\.ts/,
         /party-booth\.spec\.ts/,
       ],
-      use: { ...devices["iPhone 13"] },
+      use: {
+        ...devices["iPhone 13"],
+        browserName: "chromium",
+        viewport: { width: 390, height: 844 },
+        ...cameraLaunch,
+      },
     },
     {
       name: "solo-mobile",
@@ -39,13 +70,7 @@ export default defineConfig({
       ],
       use: {
         ...devices["Pixel 7"],
-        permissions: ["camera"],
-        launchOptions: {
-          args: [
-            "--use-fake-ui-for-media-stream",
-            "--use-fake-device-for-media-stream",
-          ],
-        },
+        ...cameraLaunch,
       },
     },
   ],

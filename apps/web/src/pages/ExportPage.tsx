@@ -102,7 +102,12 @@ export function ExportPage() {
           (hasPhotos ? t("collageDownloadHint") : t("collageDownloadMissingPhotos"))}
       </p>
 
-      <Button fullWidth onClick={downloadCollage} disabled={downloading || !hasPhotos}>
+      <Button
+        fullWidth
+        className={styles.download}
+        onClick={downloadCollage}
+        disabled={downloading || !hasPhotos}
+      >
         {downloading ? t("preparingDownload") : t("download")}
       </Button>
 
