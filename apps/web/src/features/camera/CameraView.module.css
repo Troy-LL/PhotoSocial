@@ -106,7 +106,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    width: min(72vw, 280px);
+    width: min(72vw, 280px, calc(min(64dvh, 100%) / 3));
     aspect-ratio: 1 / 3;
     height: auto;
     max-height: min(64dvh, calc(100% - 16px));
@@ -230,8 +230,8 @@
   }
 
   .stripStageReview .reviewCollageWrap:has(.stripVertical) {
-    width: min(240px, 28vw);
-    max-height: min(52dvh, calc(100dvh - 240px));
+    width: min(240px, 28vw, calc(min(58dvh, 100dvh - 320px) / 3));
+    max-height: min(58dvh, calc(100dvh - 320px));
     aspect-ratio: 1 / 3;
     height: auto;
   }
@@ -400,7 +400,9 @@
 }
 
 .stripVertical {
-  width: min(260px, 88vw);
+  width: min(260px, 88vw, calc(min(34dvh, 300px) / 3));
+  aspect-ratio: 1 / 3;
+  height: auto;
   max-height: min(34dvh, 300px);
   margin-inline: auto;
 }
@@ -477,7 +479,7 @@ button.filledSlot {
   }
 
   .stripStageVertical .stripVertical {
-    width: min(240px, 28vw);
+    width: min(240px, 28vw, calc(min(72dvh, 720px) / 3));
     aspect-ratio: 1 / 3;
     height: auto;
     max-height: min(72dvh, 720px);
@@ -528,7 +530,8 @@ button.filledSlot {
   }
 
   .controls {
-    position: static;
+    position: relative;
+    z-index: 12;
     box-shadow: none;
     padding: 20px 24px;
   }
@@ -581,13 +584,13 @@ button.filledSlot {
 
 @media (min-width: 1200px) {
   .stripStageVertical .stripVertical {
-    width: min(280px, 22vw);
+    width: min(280px, 22vw, calc(min(68dvh, 560px) / 3));
     aspect-ratio: 1 / 3;
     max-height: min(68dvh, 560px);
   }
 
   .stripStageReview .reviewCollageWrap:has(.stripVertical) {
-    width: min(280px, 22vw);
+    width: min(280px, 22vw, calc(min(58dvh, 100dvh - 320px) / 3));
   }
 
   .stripStageHorizontal .stripHorizontal {
@@ -766,6 +769,8 @@ button.filledSlot:hover {
   display: flex;
   flex-direction: column;
   flex-shrink: 0;
+  position: relative;
+  z-index: 12;
   padding: 16px;
   padding-bottom: max(16px, env(safe-area-inset-bottom));
   padding-inline: max(16px, env(safe-area-inset-left)) max(16px, env(safe-area-inset-right));

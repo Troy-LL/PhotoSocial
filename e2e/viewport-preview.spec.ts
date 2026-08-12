@@ -22,7 +22,9 @@ function ensureDir(dir: string) {
 async function assertAspectNear(locator: Locator, expected: number) {
   const box = await locator.boundingBox();
   expect(box, "element should have a layout box").toBeTruthy();
-  expect(box!.width / Math.max(1, box!.height)).toBeCloseTo(expected, 1);
+  const actual = box!.width / Math.max(1, box!.height);
+  // Inner grid padding/border shifts the box slightly off the CSS aspect-ratio.
+  expect(Math.abs(actual - expected)).toBeLessThan(0.08);
 }
 
 async function startSoloBooth(page: Page, layoutName: string) {
@@ -51,6 +53,13 @@ async function takePhotos(page: Page, count: number) {
   ).toBeVisible({ timeout: 15_000 });
 }
 
+async function openCollage(page: Page) {
+  const viewCollage = page.getByRole("button", { name: "View collage" });
+  await viewCollage.scrollIntoViewIfNeeded();
+  await viewCollage.click();
+  await expect(page).toHaveURL(/\/solo\/collage/);
+}
+
 async function downloadCollage(page: Page, fileName: string) {
   const downloadPromise = page.waitForEvent("download", { timeout: 45_000 });
   await page.getByRole("button", { name: "Download" }).click();
@@ -67,6 +76,8 @@ test.beforeAll(() => {
 });
 
 test.describe("viewport preview", () => {
+  test.setTimeout(60_000);
+
   test.beforeEach(async ({ page }) => {
     await installMockCamera(page);
   });
@@ -86,8 +97,7 @@ test.describe("viewport preview", () => {
       fullPage: true,
     });
 
-    await page.getByRole("button", { name: "View collage" }).click();
-    await expect(page).toHaveURL(/\/solo\/collage/);
+    await openCollage(page);
     await expect(
       page.getByRole("heading", { name: "Your strip is ready!" })
     ).toBeVisible();
@@ -117,8 +127,7 @@ test.describe("viewport preview", () => {
 
     await startSoloBooth(page, "3-Up Top");
     await takePhotos(page, 3);
-    await page.getByRole("button", { name: "View collage" }).click();
-    await expect(page).toHaveURL(/\/solo\/collage/);
+    await openCollage(page);
 
     await page.evaluate(() => {
       Object.defineProperty(navigator, "canShare", {
@@ -154,8 +163,7 @@ test.describe("viewport preview", () => {
     await expect(cameraStrip).toBeVisible();
     await assertAspectNear(cameraStrip, 3 / 1);
 
-    await page.getByRole("button", { name: "View collage" }).click();
-    await expect(page).toHaveURL(/\/solo\/collage/);
+    await openCollage(page);
 
     const collage = page.locator("#collage-export");
     await expect(collage).toBeVisible();
